@@ -43,7 +43,7 @@ export const FloatingActions = memo(function FloatingActions({
 	}, []);
 
 	useEffect(() => {
-		const handleClickOutside = (event: MouseEvent) => {
+		const handleClickOutside = (event: MouseEvent | TouchEvent) => {
 			if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node)) {
 				setIsQrCodeOpen(false);
 			}
@@ -51,10 +51,12 @@ export const FloatingActions = memo(function FloatingActions({
 
 		if (isQrCodeOpen) {
 			document.addEventListener("mousedown", handleClickOutside);
+			document.addEventListener("touchstart", handleClickOutside);
 		}
 
 		return () => {
 			document.removeEventListener("mousedown", handleClickOutside);
+			document.removeEventListener("touchstart", handleClickOutside);
 		};
 	}, [isQrCodeOpen]);
 
@@ -62,7 +64,8 @@ export const FloatingActions = memo(function FloatingActions({
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	}, []);
 
-	const toggleQrCode = useCallback(() => {
+	const toggleQrCode = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
+		e?.stopPropagation();
 		setIsQrCodeOpen((prev) => !prev);
 	}, []);
 
@@ -95,11 +98,11 @@ export const FloatingActions = memo(function FloatingActions({
 			</Button>
 
 			{showQrCode && qrCode && (
-				<div ref={qrCodeRef} className="group relative flex items-center">
+				<div ref={qrCodeRef} className="relative flex items-center">
 					<div className={`absolute bottom-0 right-12 transition-all duration-200 ${
 						isQrCodeOpen 
 							? "pointer-events-auto translate-x-0 opacity-100" 
-							: "pointer-events-none translate-x-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100"
+							: "pointer-events-none translate-x-2 opacity-0"
 					}`}>
 						<div className="relative w-44 rounded-2xl bg-(--primary-foreground) p-4 text-center shadow-lg">
 							<div className="mx-auto flex h-28 w-28 items-center justify-center rounded-xl bg-default dark:bg-zinc-700 p-2">
@@ -123,16 +126,18 @@ export const FloatingActions = memo(function FloatingActions({
 						</div>
 					</div>
 
-					<Button
-						size="lg"
-						isIconOnly
+					<button
+						type="button"
 						aria-label="关注公众号"
-						variant="tertiary"
-						className="shadow bg-(--primary-foreground) rounded-full transition-all duration-300 hover:-translate-y-0.5"
-						onPress={toggleQrCode}
+						className="flex h-14 w-14 items-center justify-center rounded-full bg-(--primary-foreground) shadow transition-all duration-300 hover:-translate-y-0.5 active:scale-95"
+						onClick={toggleQrCode}
+						onTouchStart={(e) => {
+							e.preventDefault();
+							toggleQrCode(e);
+						}}
 					>
-						<AiOutlineQrcode />
-					</Button>
+						<AiOutlineQrcode className="h-6 w-6" />
+					</button>
 				</div>
 			)}
 		</div>
