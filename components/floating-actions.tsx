@@ -19,6 +19,8 @@ export const FloatingActions = memo(function FloatingActions({
 	const qrCode = useAtomValue(navQrCodeAtom);
 	const qrCodeText = useAtomValue(navQrCodeTextAtom);
 	const [showTop, setShowTop] = useState(false);
+	const [isQrCodeOpen, setIsQrCodeOpen] = useState(false);
+	const qrCodeRef = useRef<HTMLDivElement>(null);
 	const rafRef = useRef(0);
 
 	useEffect(() => {
@@ -26,7 +28,6 @@ export const FloatingActions = memo(function FloatingActions({
 			if (rafRef.current) return;
 			rafRef.current = requestAnimationFrame(() => {
 				const next = window.scrollY > 300;
-				// 相等性短路：避免滚动时频繁触发相同值的 setState 导致 memo 失效
 				setShowTop((prev) => (prev === next ? prev : next));
 				rafRef.current = 0;
 			});
@@ -41,8 +42,28 @@ export const FloatingActions = memo(function FloatingActions({
 		};
 	}, []);
 
+	useEffect(() => {
+		const handleClickOutside = (event: MouseEvent) => {
+			if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node)) {
+				setIsQrCodeOpen(false);
+			}
+		};
+
+		if (isQrCodeOpen) {
+			document.addEventListener("mousedown", handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, [isQrCodeOpen]);
+
 	const scrollToTop = useCallback(() => {
 		window.scrollTo({ top: 0, behavior: "smooth" });
+	}, []);
+
+	const toggleQrCode = useCallback(() => {
+		setIsQrCodeOpen((prev) => !prev);
 	}, []);
 
 	return (
@@ -74,8 +95,12 @@ export const FloatingActions = memo(function FloatingActions({
 			</Button>
 
 			{showQrCode && qrCode && (
-				<div className="group relative flex items-center">
-					<div className="pointer-events-none absolute bottom-0 right-12 translate-x-2 opacity-0 transition-all duration-200 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100">
+				<div ref={qrCodeRef} className="group relative flex items-center">
+					<div className={`absolute bottom-0 right-12 transition-all duration-200 ${
+						isQrCodeOpen 
+							? "pointer-events-auto translate-x-0 opacity-100" 
+							: "pointer-events-none translate-x-2 opacity-0 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:opacity-100"
+					}`}>
 						<div className="relative w-44 rounded-2xl bg-(--primary-foreground) p-4 text-center shadow-lg">
 							<div className="mx-auto flex h-28 w-28 items-center justify-center rounded-xl bg-default dark:bg-zinc-700 p-2">
 								<Image
@@ -104,6 +129,7 @@ export const FloatingActions = memo(function FloatingActions({
 						aria-label="关注公众号"
 						variant="tertiary"
 						className="shadow bg-(--primary-foreground) rounded-full transition-all duration-300 hover:-translate-y-0.5"
+						onPress={toggleQrCode}
 					>
 						<AiOutlineQrcode />
 					</Button>
