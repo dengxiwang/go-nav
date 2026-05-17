@@ -35,6 +35,7 @@ import {
     BiDonateHeart,
     BiImport,
     BiFile,
+    BiSync,
 } from "react-icons/bi";
 import {
     applyImportAtom,
@@ -60,7 +61,8 @@ type RouteKey =
 	| "donation"
 	| "backup"
 	| "import"
-	| "source-file";
+	| "source-file"
+	| "github-sync";
 
 interface NavItem {
 	key: RouteKey;
@@ -159,6 +161,12 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 				label: "备份还原",
 				icon: <BiArchive className="size-5" />,
 				desc: "数据 + 上传图片备份与还原",
+			},
+			{
+				key: "github-sync",
+				label: "数据同步",
+				icon: <BiSync className="size-5" />,
+				desc: "GitHub / WebDAV 远程同步",
 			},
 		],
 	},
