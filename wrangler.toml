@@ -5,7 +5,7 @@ pages_build_output_dir = ".open-next"
 [[d1_databases]]
 binding = "DB"
 database_name = "go-nav-data"
-database_id = "<创建后填入>"
+database_id = "9bf1ae00-511a-404f-934d-283aa27f51de"
 
 [[r2_buckets]]
 binding = "UPLOADS_BUCKET"
