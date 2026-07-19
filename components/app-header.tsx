@@ -28,10 +28,12 @@ export const AppHeader = memo(function AppHeader({
 			<div className="flex min-w-0 items-center gap-2 min-[860px]:col-start-1 min-[860px]:justify-self-start">
 				<Button
 					variant="tertiary"
+					size="md"
 					isIconOnly
 					aria-label="打开菜单"
-					className="shrink-0 shadow bg-(--primary-foreground) md:hidden"
-					onPress={onMenuOpen}
+					aria-haspopup="dialog"
+					className="shrink-0 touch-manipulation select-none shadow bg-(--primary-foreground) md:hidden"
+					onPressStart={onMenuOpen}
 				>
 					<BiMenuAltLeft className="scale-150" />
 				</Button>
@@ -58,6 +60,7 @@ export const AppHeader = memo(function AppHeader({
 				<div className="flex max-[479px]:flex min-[480px]:hidden">
 					<Button
 						variant="tertiary"
+						size="md"
 						isIconOnly
 						aria-label="切换搜索引擎"
 						className="shrink-0 shadow bg-(--primary-foreground)"

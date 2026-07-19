@@ -6,28 +6,28 @@ import { AppSidebar } from "./app-sidebar";
 import { AppFooter } from "./app-footer";
 import { FloatingActions } from "./floating-actions";
 import {
-	SubmissionDialogHost,
-	type SubmissionDeploymentMode,
+    SubmissionDialogHost,
+    type SubmissionDeploymentMode,
 } from "./submission-dialog-host";
 import { useActiveSectionWriter } from "@/hooks/use-active-section";
 import {
-	activeIdAtom,
-	categoriesAtom,
-	homeAdsAspectRatioAtom,
-	homeAdsAtom,
-	homeAdsAutoplayIntervalAtom,
-	homeAdsEnabledAtom,
-	homeAdsGapAtom,
-	homeAdsVisibleCountAtom,
-	layoutAtom,
-	recentVisitsMaxAtom,
-	sidebarAdsAspectRatioAtom,
-	sidebarAdsAtom,
-	sidebarAdsAutoplayIntervalAtom,
-	sidebarAdsEnabledAtom,
-	showRecentVisitsAtom,
-	showSubcategoryTabsAtom,
-	submissionConfigAtom,
+    activeIdAtom,
+    categoriesAtom,
+    homeAdsAspectRatioAtom,
+    homeAdsAtom,
+    homeAdsAutoplayIntervalAtom,
+    homeAdsEnabledAtom,
+    homeAdsGapAtom,
+    homeAdsVisibleCountAtom,
+    layoutAtom,
+    recentVisitsMaxAtom,
+    sidebarAdsAspectRatioAtom,
+    sidebarAdsAtom,
+    sidebarAdsAutoplayIntervalAtom,
+    sidebarAdsEnabledAtom,
+    showRecentVisitsAtom,
+    showSubcategoryTabsAtom,
+    submissionConfigAtom,
 } from "@/lib/store/site";
 import { AppLayoutHomeContent } from "./app-layout/app-layout-home-content";
 import { SiteDetailPage } from "./app-layout/site-detail-page";
@@ -85,17 +85,16 @@ export function AppLayout({
 		categories,
 		showSubcategoryTabs,
 	});
-	const {
-		disableRecentVisitsEntrance,
-		isDetailRoute,
-		selectedEntry,
-	} = useHomeRouteState({
-		pathname,
-		categories,
-		detailEnabled: layout.enableSiteDetailPage,
-		setActiveId,
-	});
+	const { disableRecentVisitsEntrance, isDetailRoute, selectedEntry } =
+		useHomeRouteState({
+			pathname,
+			categories,
+			detailEnabled: layout.enableSiteDetailPage,
+			setActiveId,
+		});
 	const hasDesktopSidebar = layout.showSidebar && displayCategories.length > 0;
+	const hasVisibleHomeAds =
+		!selectedEntry && !isDetailRoute && homeAdsEnabled && homeAds.length > 0;
 
 	return (
 		<div className="flex min-h-dvh flex-col">
@@ -122,7 +121,10 @@ export function AppLayout({
 					}`}
 					style={appShellStyle}
 				>
-					<main className="min-w-0 flex-1 py-2" style={mainStyle}>
+					<main
+						className={`min-w-0 flex-1 ${hasVisibleHomeAds ? "pt-0 pb-2" : "py-2"}`}
+						style={mainStyle}
+					>
 						{selectedEntry ? (
 							<SiteDetailPage entry={selectedEntry} layout={layout} />
 						) : isDetailRoute ? (
@@ -145,7 +147,7 @@ export function AppLayout({
 								adsGap={homeAdsGap}
 								adsVisibleCount={homeAdsVisibleCount}
 								autoplayInterval={homeAdsAutoplayInterval}
-								showHomeAds={homeAdsEnabled}
+								showHomeAds={hasVisibleHomeAds}
 							/>
 						)}
 					</main>
@@ -161,9 +163,7 @@ export function AppLayout({
 				<FloatingActions
 					showActions={layout.showFloatingActions}
 					showQrCode={layout.showFloatingQrCode}
-					showSubmission={
-						submission.enabled && submission.showFloatingButton
-					}
+					showSubmission={submission.enabled && submission.showFloatingButton}
 				/>
 			)}
 			<SubmissionDialogHost deploymentMode={deploymentMode} />

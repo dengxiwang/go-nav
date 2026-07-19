@@ -117,5 +117,7 @@
     "showFloatingButton": true,
     "showSidebarButton": true,
     "staticEmail": "dengxiwang@aliyun.com"
-  }
+  },
+  "sidebarAdsEnabled": true,
+  "homeAdsEnabled": true
 }
