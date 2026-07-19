@@ -5,14 +5,25 @@ import { useSetAtom } from "jotai";
 import { BiBookmarkPlus } from "react-icons/bi";
 import { submissionDialogOpenAtom } from "@/lib/store/site";
 
-export function SubmissionSidebarButton() {
+export function SubmissionSidebarButton({
+	context,
+}: {
+	context: "desktop" | "drawer";
+}) {
 	const setOpen = useSetAtom(submissionDialogOpenAtom);
+	const inDrawer = context === "drawer";
 	return (
-		<div className="shrink-0 px-4 pt-4">
+		<div
+			className={
+				inDrawer
+					? "shrink-0 px-2 pt-2"
+					: "shrink-0 px-4 pt-4"
+			}
+		>
 			<Button
 				fullWidth
 				variant="outline"
-				className="justify-center"
+				className="touch-manipulation justify-center"
 				onPress={() => setOpen(true)}
 			>
 				<BiBookmarkPlus className="size-4" />

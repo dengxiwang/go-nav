@@ -166,7 +166,7 @@ function AdCarouselControls({
 			<button
 				type="button"
 				aria-label="上一条广告"
-				className={`absolute top-1/2 ${leftInset} ${arrowSize} z-20 flex -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-black/8 bg-white/92 text-zinc-800 shadow-[0_4px_14px_rgba(15,23,42,0.12)] backdrop-blur transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-white/10 dark:bg-zinc-800/92 dark:text-zinc-100 dark:hover:bg-zinc-800`}
+				className={`absolute top-1/2 ${leftInset} ${arrowSize} z-20 hidden -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-black/8 bg-white/92 text-zinc-800 shadow-[0_4px_14px_rgba(15,23,42,0.12)] backdrop-blur transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:flex dark:border-white/10 dark:bg-zinc-800/92 dark:text-zinc-100 dark:hover:bg-zinc-800`}
 				onClick={() => swiperRef.current?.slidePrev()}
 			>
 				<BiChevronLeft className="size-5" />
@@ -174,7 +174,7 @@ function AdCarouselControls({
 			<button
 				type="button"
 				aria-label="下一条广告"
-				className={`absolute top-1/2 ${rightInset} ${arrowSize} z-20 flex -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-black/8 bg-white/92 text-zinc-800 shadow-[0_4px_14px_rgba(15,23,42,0.12)] backdrop-blur transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-white/10 dark:bg-zinc-800/92 dark:text-zinc-100 dark:hover:bg-zinc-800`}
+				className={`absolute top-1/2 ${rightInset} ${arrowSize} z-20 hidden -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-black/8 bg-white/92 text-zinc-800 shadow-[0_4px_14px_rgba(15,23,42,0.12)] backdrop-blur transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:flex dark:border-white/10 dark:bg-zinc-800/92 dark:text-zinc-100 dark:hover:bg-zinc-800`}
 				onClick={() => swiperRef.current?.slideNext()}
 			>
 				<BiChevronRight className="size-5" />

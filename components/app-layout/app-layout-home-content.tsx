@@ -37,23 +37,24 @@ export function AppLayoutHomeContent({
 	autoplayInterval: number;
 	showHomeAds: boolean;
 }) {
-	const homeAds = showHomeAds && ads.length > 0 ? (
-		<section
-			aria-label="推荐广告"
-			className="mb-2 w-full"
-			style={{ padding: `8px ${cardGrid.padding}` }}
-		>
-			<AdBanner
-				ads={ads}
-				aspectRatio={adsAspectRatio}
-				gap={adsGap}
-				visibleCount={adsVisibleCount}
-				autoplayInterval={autoplayInterval}
-				cardStyle={layout.cardStyle}
-				placement="home-top"
-			/>
-		</section>
-	) : null;
+	const homeAds =
+		showHomeAds && ads.length > 0 ? (
+			<section
+				aria-label="推荐广告"
+				className="mb-2 w-full"
+				style={{ padding: `0px ${cardGrid.padding} 8px ${cardGrid.padding}` }}
+			>
+				<AdBanner
+					ads={ads}
+					aspectRatio={adsAspectRatio}
+					gap={adsGap}
+					visibleCount={adsVisibleCount}
+					autoplayInterval={autoplayInterval}
+					cardStyle={layout.cardStyle}
+					placement="home-top"
+				/>
+			</section>
+		) : null;
 
 	if (displayCategories.length === 0) {
 		return (

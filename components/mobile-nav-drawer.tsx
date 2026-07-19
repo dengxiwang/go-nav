@@ -23,6 +23,7 @@ export function MobileNavDrawer({
 			open={open}
 			onOpenChange={onOpenChange}
 			placement="left"
+			bodyClassName="min-h-0 overflow-hidden"
 			header={
 				<Drawer.Heading className="flex items-center gap-2 p-3">
 					<IconView icon={logo} alt={title} size={24} />

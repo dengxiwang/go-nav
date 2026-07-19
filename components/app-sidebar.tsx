@@ -45,6 +45,7 @@ export const AppSidebar = memo(function AppSidebar({
 					categories={categories}
 					onItemClick={onItemClick}
 					showSubmissionAction={showSubmissionAction}
+					context="desktop"
 				/>
 			</div>
 

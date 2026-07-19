@@ -9,7 +9,15 @@ import {
 	SearchField,
 } from "@heroui/react";
 import type { Key } from "@heroui/react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type ReactNode,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
 import type { NavCategory } from "@/types";
@@ -53,10 +61,14 @@ export const CategorySidebar = memo(function CategorySidebar({
 	categories,
 	onItemClick,
 	showSubmissionAction = false,
+	context,
+	footer,
 }: {
 	categories: NavCategory[];
 	onItemClick?: (id: string) => void;
 	showSubmissionAction?: boolean;
+	context: "desktop" | "drawer";
+	footer?: ReactNode;
 }) {
 	const activeId = useAtomValue(activeIdAtom);
 	const showSubcategoryTabs = useAtomValue(showSubcategoryTabsAtom);
@@ -379,7 +391,8 @@ export const CategorySidebar = memo(function CategorySidebar({
 					</ListBox>
 				)}
 			</div>
-			{showSubmissionAction && <SubmissionSidebarButton />}
+			{showSubmissionAction && <SubmissionSidebarButton context={context} />}
+			{footer}
 		</div>
 	);
 });

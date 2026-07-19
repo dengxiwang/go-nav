@@ -4,18 +4,23 @@ import { useOverlayState, type Key } from "@heroui/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
 import { AppHeader } from "./app-header";
+import { AdBanner } from "./ad-banner";
 import { CategorySidebar } from "./category-sidebar";
 import { EngineDrawer } from "./engine-drawer";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
 import type { HeaderBranding, HeaderSearchModel } from "./header.types";
 import {
-	categoriesAtom,
-	flatSitesAtom,
-	layoutAtom,
-	navLogoAtom,
-	navNameAtom,
-	searchConfigAtom,
-	submissionConfigAtom,
+    categoriesAtom,
+    flatSitesAtom,
+    layoutAtom,
+    navLogoAtom,
+    navNameAtom,
+    searchConfigAtom,
+    sidebarAdsAspectRatioAtom,
+    sidebarAdsAtom,
+    sidebarAdsAutoplayIntervalAtom,
+    sidebarAdsEnabledAtom,
+    submissionConfigAtom,
 } from "@/lib/store/site";
 import { useJumpToSection } from "@/hooks/use-active-section";
 
@@ -33,20 +38,20 @@ export function HeaderBundle({ showSearch }: { showSearch: boolean }) {
 	const logo = useAtomValue(navLogoAtom);
 	const onNavigate = useJumpToSection();
 	const menuDrawerState = useResponsiveDrawerState(768);
+	const openMenu = menuDrawerState.open;
+	const closeMenu = menuDrawerState.close;
 	const branding = useMemo<HeaderBranding>(
 		() => ({ name, logo }),
 		[name, logo],
 	);
 
-	const openMenu = useCallback(() => menuDrawerState.open(), [menuDrawerState]);
-
 	// 移动端导航点击后除了跳转还要关掉抽屉
 	const handleDrawerNavigate = useCallback(
 		(id: string) => {
 			onNavigate(id);
-			menuDrawerState.close();
+			closeMenu();
 		},
-		[menuDrawerState, onNavigate],
+		[closeMenu, onNavigate],
 	);
 
 	const header = showSearch ? (
@@ -104,11 +109,32 @@ function MobileNavDrawerContent({
 }) {
 	const categories = useAtomValue(categoriesAtom);
 	const submission = useAtomValue(submissionConfigAtom);
+	const sidebarAds = useAtomValue(sidebarAdsAtom);
+	const sidebarAdsEnabled = useAtomValue(sidebarAdsEnabledAtom);
+	const sidebarAdsAspectRatio = useAtomValue(sidebarAdsAspectRatioAtom);
+	const sidebarAdsAutoplayInterval = useAtomValue(
+		sidebarAdsAutoplayIntervalAtom,
+	);
+	const layout = useAtomValue(layoutAtom);
+	const sidebarAdFooter =
+		sidebarAdsEnabled && sidebarAds.length > 0 ? (
+			<div className="shrink-0 p-2">
+				<AdBanner
+					ads={sidebarAds}
+					aspectRatio={sidebarAdsAspectRatio}
+					autoplayInterval={sidebarAdsAutoplayInterval}
+					cardStyle={layout.cardStyle}
+					placement="sidebar"
+				/>
+			</div>
+		) : <div className="h-2" />;
 
 	return (
 		<CategorySidebar
 			categories={categories}
 			onItemClick={onItemClick}
+			context="drawer"
+			footer={sidebarAdFooter}
 			showSubmissionAction={
 				submission.enabled && submission.showSidebarButton
 			}
@@ -204,16 +230,17 @@ function SearchHeader({
 
 function useResponsiveDrawerState(closeAtMinWidth: number) {
 	const drawerState = useOverlayState();
+	const close = drawerState.close;
 
 	useEffect(() => {
 		const media = window.matchMedia(`(min-width: ${closeAtMinWidth}px)`);
 		const onChange = (event: MediaQueryListEvent) => {
-			if (event.matches) drawerState.close();
+			if (event.matches) close();
 		};
 
 		media.addEventListener("change", onChange);
 		return () => media.removeEventListener("change", onChange);
-	}, [closeAtMinWidth, drawerState]);
+	}, [close, closeAtMinWidth]);
 
 	return drawerState;
 }
