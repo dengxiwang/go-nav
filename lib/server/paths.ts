@@ -93,6 +93,9 @@ export const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 /** 图床上传记录，用于远端图床按内容 MD5 复用已有路径 */
 export const IMAGE_HOST_ASSETS_FILE = path.join(DATA_DIR, "image-host-assets.json");
 
+/** 动态部署收到的投稿审核队列（投稿内容不进入公开 nav 配置） */
+export const SUBMISSIONS_FILE = path.join(DATA_DIR, "submissions.json");
+
 /** 图床配置文件路径（读取优先当前写入格式，再 fallback 到其余格式） */
 export function resolveImageHostFilePathForRead(): string {
 	return (

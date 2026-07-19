@@ -7,6 +7,10 @@ import {
 	UPLOADS_DIR,
 } from "@/lib/server/paths";
 import {
+	readSubmissionData,
+	writeSubmissionData,
+} from "@/lib/server/submissions";
+import {
 	parseStructuredContent,
 	readNav,
 	readWebsiteData,
@@ -15,7 +19,7 @@ import {
 	writeWebsiteData,
 } from "@/lib/server/store";
 import { createZip, parseZip, type ZipEntry } from "@/lib/server/zip";
-import type { NavConfig, WebsiteData } from "@/types";
+import type { NavConfig, SubmissionData, WebsiteData } from "@/types";
 
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([
 	".png",
@@ -28,10 +32,13 @@ const ALLOWED_UPLOAD_EXTENSIONS = new Set([
 ]);
 const WEBSITE_BACKUP_IMPORT_FILES = ["website.yaml", "website.yml", "website.json"] as const;
 const NAV_BACKUP_IMPORT_FILES = ["nav.yaml", "nav.yml", "nav.json"] as const;
+const MAX_BACKUP_ENTRY_BYTES = 256 * 1024 * 1024;
+const MAX_BACKUP_UNCOMPRESSED_BYTES = 512 * 1024 * 1024;
 export interface BackupRestoreResult {
 	website: boolean;
 	nav: boolean;
 	uploads: number;
+	submissions?: number;
 	disabledJsPlugins: number;
 }
 
@@ -65,6 +72,7 @@ function readAllUploads(): ZipEntry[] {
 export function createDataBackupZip(): Buffer {
 	const websiteData = readWebsiteData();
 	const nav = readNav();
+	const submissionData = readSubmissionData();
 	const meta = {
 		version: "2.0",
 		scope: "go-nav-data",
@@ -77,6 +85,10 @@ export function createDataBackupZip(): Buffer {
 		},
 		createStructuredBackupEntry("website", websiteData),
 		createStructuredBackupEntry("nav", nav),
+		{
+			name: "submissions.json",
+			data: Buffer.from(JSON.stringify(submissionData, null, 2), "utf8"),
+		},
 		...readAllUploads(),
 	];
 	return createZip(entries);
@@ -89,17 +101,25 @@ export function createBackupFileName(date = new Date()): string {
 export function restoreDataBackupZip(buf: Buffer): BackupRestoreResult {
 	let entries: ZipEntry[];
 	try {
-		entries = parseZip(buf);
+		entries = parseZip(buf, {
+			maxEntries: 4096,
+			maxEntryUncompressedBytes: MAX_BACKUP_ENTRY_BYTES,
+			maxTotalUncompressedBytes: MAX_BACKUP_UNCOMPRESSED_BYTES,
+		});
 	} catch (e) {
 		throw new Error(`解析 zip 失败：${(e as Error).message}`);
 	}
 
 	let websiteData: WebsiteData | null = null;
 	let nav: NavConfig | null = null;
+	let submissionData: SubmissionData | null = null;
 	let disabledJsPlugins = 0;
 	const uploads: { name: string; data: Buffer }[] = [];
 	const websiteEntry = findBackupEntry(entries, WEBSITE_BACKUP_IMPORT_FILES);
 	const navEntry = findBackupEntry(entries, NAV_BACKUP_IMPORT_FILES);
+	const submissionsEntry = entries.find(
+		(entry) => entry.name === "submissions.json",
+	);
 
 	for (const ent of entries) {
 		if (ent.name.startsWith("uploads/")) {
@@ -127,13 +147,27 @@ export function restoreDataBackupZip(buf: Buffer): BackupRestoreResult {
 			throw new Error(`${navEntry.name} 解析失败`);
 		}
 	}
+	if (submissionsEntry) {
+		try {
+			const parsed = JSON.parse(
+				submissionsEntry.data.toString("utf8"),
+			) as SubmissionData;
+			if (!Array.isArray(parsed.submissions)) throw new Error("invalid list");
+			submissionData = parsed;
+		} catch {
+			throw new Error("submissions.json 解析失败");
+		}
+	}
 
-	if (!websiteData && !nav && uploads.length === 0) {
-		throw new Error("压缩包中未找到 website/nav 配置文件或 uploads/");
+	if (!websiteData && !nav && !submissionData && uploads.length === 0) {
+		throw new Error(
+			"压缩包中未找到 website/nav/submissions 配置文件或 uploads/",
+		);
 	}
 
 	if (websiteData) writeWebsiteData(websiteData);
 	if (nav) writeNav(nav);
+	if (submissionData) writeSubmissionData(submissionData);
 	if (uploads.length > 0) {
 		fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 		for (const u of uploads) {
@@ -145,6 +179,7 @@ export function restoreDataBackupZip(buf: Buffer): BackupRestoreResult {
 		website: !!websiteData,
 		nav: !!nav,
 		uploads: uploads.length,
+		submissions: submissionData?.submissions.length ?? 0,
 		disabledJsPlugins,
 	};
 }

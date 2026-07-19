@@ -3,13 +3,14 @@
 import { SiteIcon } from "../site-icon";
 import {
 	CARD_TRANSITION_CLASS,
+	COMPACT_CARD_SURFACE_CLASS,
 	FOCUS_RING_CLASS,
 	SHARED_SPRING_EASE_CLASS,
 } from "../ui/ui.constants";
 import { SiteCardLinkShell } from "./site-card-link-shell";
 import type { SiteCardVisualProps } from "./site-card.types";
 
-const COMPACT_CARD_CLASS = `group flex transform-gpu transition-all duration-300 items-center gap-3 rounded-xl bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${CARD_TRANSITION_CLASS} duration-300 ${SHARED_SPRING_EASE_CLASS} ${FOCUS_RING_CLASS} dark:bg-zinc-800 [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:bg-white [@media(hover:hover)]:hover:shadow-[0_12px_28px_rgba(15,23,42,0.11)] active:translate-y-0 active:scale-[0.99] dark:[@media(hover:hover)]:hover:bg-zinc-800`;
+const COMPACT_CARD_CLASS = `group flex transform-gpu transition-all duration-300 items-center gap-3 p-3 ${COMPACT_CARD_SURFACE_CLASS} ${CARD_TRANSITION_CLASS} duration-300 ${SHARED_SPRING_EASE_CLASS} ${FOCUS_RING_CLASS} [@media(hover:hover)]:hover:-translate-y-0.5 [@media(hover:hover)]:hover:bg-white [@media(hover:hover)]:hover:shadow-[0_12px_28px_rgba(15,23,42,0.11)] active:translate-y-0 active:scale-[0.99] dark:[@media(hover:hover)]:hover:bg-zinc-800`;
 
 export function CompactSiteCard({
 	site,

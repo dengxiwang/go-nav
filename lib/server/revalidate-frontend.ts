@@ -1,6 +1,4 @@
 import { revalidatePath } from "next/cache";
-import { getNav, getWebsiteData } from "@/lib/config";
-import { collectSiteDetailEntries } from "@/lib/site-detail";
 
 /**
  * 统一触发前台可见页面的缓存失效：
@@ -14,14 +12,7 @@ export function revalidateFrontendPaths() {
 	revalidatePath("/");
 	revalidatePath("/sitemap.xml");
 
-	const nav = getNav();
-	if (nav.layout?.enableSiteDetailPage !== true) return;
-
-	const websiteData = getWebsiteData();
-	const entries = collectSiteDetailEntries(websiteData.categories);
-	for (const entry of entries) {
-		// 兼容 trailingSlash 配置，两个路径都标记一次。
-		revalidatePath(entry.path);
-		revalidatePath(`${entry.path}/`);
-	}
+	// 路由模式可以一次标记全部详情页，不需要遍历站点数据并逐页调用。
+	// 新增的 slug 也会在首次访问时使用最新配置生成。
+	revalidatePath("/site/[slug]", "page");
 }

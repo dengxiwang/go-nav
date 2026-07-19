@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "swiper/css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -58,23 +59,55 @@ body:where(.dark *) {
 
 input,
 textarea,
+select {
+	font-size: inherit !important;
+}
+
+input,
+textarea,
 button,
 select,
 span {
-	font-size: inherit !important;
 	-webkit-text-size-adjust: 100%;
 	-moz-text-size-adjust: 100%;
 	-ms-text-size-adjust: 100%;
 	text-size-adjust: 100%;
 }
 
-svg {
+svg:not([width]) {
 	width: 1rem;
+}
+
+svg:not([height]) {
 	height: 1rem;
 }
 
 .link__icon {
 	padding: 0rem;
+}
+
+.ad-carousel__swiper {
+	overflow: hidden;
+	padding: 1px;
+}
+
+.ad-carousel__swiper .swiper-wrapper {
+	align-items: stretch;
+}
+
+.ad-carousel__slide {
+	height: auto;
+}
+
+.ad-carousel__slide > * {
+	height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ad-carousel__slide,
+	.ad-carousel__swiper .swiper-wrapper {
+		transition-duration: 0.01ms !important;
+	}
 }
 
 /* 确保 modal 的表单边框不被遮挡 */
@@ -108,6 +141,11 @@ a[data-disabled] {
 
 .dark .input,
 :where(.dark) .input {
+	border: 1px solid var(--border) !important;
+}
+
+.dark .textarea,
+:where(.dark) .textarea {
 	border: 1px solid var(--border) !important;
 }
 

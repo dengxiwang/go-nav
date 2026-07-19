@@ -3,6 +3,15 @@
 import { Button, Modal, toast } from "@heroui/react";
 import { useRef, useState } from "react";
 import { BiCheck, BiDownload, BiTrash, BiUpload } from "react-icons/bi";
+import {
+	BACKUP_IMPORT_ACTION_HEADER,
+	BACKUP_IMPORT_CHUNK_BYTES,
+	BACKUP_IMPORT_CHUNK_COUNT_HEADER,
+	BACKUP_IMPORT_CHUNK_INDEX_HEADER,
+	BACKUP_IMPORT_FILE_SIZE_HEADER,
+	BACKUP_IMPORT_MAX_BYTES,
+	BACKUP_IMPORT_UPLOAD_ID_HEADER,
+} from "@/lib/backup-import";
 
 type CleanupPreview = {
 	orphans: string[];
@@ -11,8 +20,28 @@ type CleanupPreview = {
 	orphanCount: number;
 };
 
+type RestoreResponse = {
+	restored?: { disabledJsPlugins?: number };
+};
+
+async function readImportError(res: Response): Promise<string> {
+	const data = (await res.json().catch(() => ({}))) as { error?: string };
+	if (data.error) return data.error;
+	if (res.status === 413) {
+		return "服务器或反向代理仍拒绝了 512 KB 上传分片（413）。应用已启用分片上传，请将 Nginx client_max_body_size 或托管平台的请求体限制调到至少 1 MB。";
+	}
+	return `还原失败 (${res.status})`;
+}
+
+function createBackupUploadId(): string {
+	return typeof crypto.randomUUID === "function"
+		? crypto.randomUUID()
+		: `backup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function BackupEditor() {
 	const [importing, setImporting] = useState(false);
+	const [importProgress, setImportProgress] = useState<number | null>(null);
 	const [exporting, setExporting] = useState(false);
 	const [pickedFile, setPickedFile] = useState<File | null>(null);
 	const [importError, setImportError] = useState<string | null>(null);
@@ -57,21 +86,60 @@ export function BackupEditor() {
 			setImportError("请先选择备份 zip 文件");
 			return;
 		}
+		if (pickedFile.size <= 0) {
+			setImportError("备份 zip 文件不能为空");
+			return;
+		}
+		if (pickedFile.size > BACKUP_IMPORT_MAX_BYTES) {
+			setImportError("备份文件不能超过 256 MB");
+			return;
+		}
 		setImporting(true);
+		setImportProgress(0);
 		try {
-			const buf = await pickedFile.arrayBuffer();
-			const res = await fetch("/api/backup/", {
-				method: "POST",
-				headers: { "Content-Type": "application/zip" },
-				body: buf,
-			});
-			if (!res.ok) {
-				const d = (await res.json().catch(() => ({}))) as { error?: string };
-				throw new Error(d.error || `还原失败 (${res.status})`);
-			}
-			const restored = (await res.json().catch(() => ({}))) as {
-				restored?: { disabledJsPlugins?: number };
+			const uploadId = createBackupUploadId();
+			const chunkCount = Math.ceil(
+				pickedFile.size / BACKUP_IMPORT_CHUNK_BYTES,
+			);
+			const commonHeaders = {
+				[BACKUP_IMPORT_UPLOAD_ID_HEADER]: uploadId,
+				[BACKUP_IMPORT_CHUNK_COUNT_HEADER]: String(chunkCount),
+				[BACKUP_IMPORT_FILE_SIZE_HEADER]: String(pickedFile.size),
 			};
+
+			for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+				const start = chunkIndex * BACKUP_IMPORT_CHUNK_BYTES;
+				const end = Math.min(start + BACKUP_IMPORT_CHUNK_BYTES, pickedFile.size);
+				const res = await fetch("/api/backup/", {
+					method: "POST",
+					headers: {
+						...commonHeaders,
+						"Content-Type": "application/octet-stream",
+						[BACKUP_IMPORT_ACTION_HEADER]: "chunk",
+						[BACKUP_IMPORT_CHUNK_INDEX_HEADER]: String(chunkIndex),
+					},
+					body: pickedFile.slice(start, end),
+				});
+				if (!res.ok) throw new Error(await readImportError(res));
+				setImportProgress(
+					Math.min(99, Math.round((end / pickedFile.size) * 100)),
+				);
+			}
+
+			const completeRes = await fetch("/api/backup/", {
+				method: "POST",
+				headers: {
+					...commonHeaders,
+					[BACKUP_IMPORT_ACTION_HEADER]: "complete",
+				},
+			});
+			if (!completeRes.ok) {
+				throw new Error(await readImportError(completeRes));
+			}
+			const restored = (await completeRes
+				.json()
+				.catch(() => ({}))) as RestoreResponse;
+			setImportProgress(100);
 			setImportSuccess(true);
 			setPickedFile(null);
 			const disabledJsPlugins = restored.restored?.disabledJsPlugins ?? 0;
@@ -87,6 +155,7 @@ export function BackupEditor() {
 			setImportError((e as Error).message);
 		} finally {
 			setImporting(false);
+			setImportProgress(null);
 		}
 	};
 
@@ -175,7 +244,8 @@ export function BackupEditor() {
 					<p className="text-xs text-gray-500 dark:text-neutral-400">
 						上传之前导出的备份 zip 压缩包，将直接覆盖
 						data/website.*、data/nav.* 与 data/uploads
-						目录下的对应文件。导入的 JSON/YAML 会按当前 DATA_FILE_FORMAT 写回。
+						目录下的对应文件。文件会自动分片上传，导入的 JSON/YAML
+						会按当前 DATA_FILE_FORMAT 写回。
 					</p>
 				</div>
 
@@ -231,7 +301,9 @@ export function BackupEditor() {
 						onPress={handleImport}
 					>
 						<BiUpload data-icon="inline-start" />
-						{importing ? "还原中..." : "导入并还原"}
+						{importing
+							? `还原中${importProgress === null ? "" : ` ${importProgress}%`}...`
+							: "导入并还原"}
 					</Button>
 				</div>
 			</section>

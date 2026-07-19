@@ -5,17 +5,29 @@ import { HeaderBundle } from "./header-bundle";
 import { AppSidebar } from "./app-sidebar";
 import { AppFooter } from "./app-footer";
 import { FloatingActions } from "./floating-actions";
+import {
+	SubmissionDialogHost,
+	type SubmissionDeploymentMode,
+} from "./submission-dialog-host";
 import { useActiveSectionWriter } from "@/hooks/use-active-section";
 import {
 	activeIdAtom,
-	adsAspectRatioAtom,
 	categoriesAtom,
-	enabledAdsAtom,
+	homeAdsAspectRatioAtom,
+	homeAdsAtom,
+	homeAdsAutoplayIntervalAtom,
+	homeAdsEnabledAtom,
+	homeAdsGapAtom,
+	homeAdsVisibleCountAtom,
 	layoutAtom,
 	recentVisitsMaxAtom,
-	showAdsAtom,
+	sidebarAdsAspectRatioAtom,
+	sidebarAdsAtom,
+	sidebarAdsAutoplayIntervalAtom,
+	sidebarAdsEnabledAtom,
 	showRecentVisitsAtom,
 	showSubcategoryTabsAtom,
+	submissionConfigAtom,
 } from "@/lib/store/site";
 import { AppLayoutHomeContent } from "./app-layout/app-layout-home-content";
 import { SiteDetailPage } from "./app-layout/site-detail-page";
@@ -32,16 +44,30 @@ import { PageEmptyState } from "./ui/empty-state-blocks";
  *   AppLayout 本身不再订阅 activeId，滚动时不会重渲染。
  * - 抽屉开关 / 搜索引擎等状态下沉到 HeaderBundle。
  */
-export function AppLayout() {
+export function AppLayout({
+	deploymentMode,
+}: {
+	deploymentMode: SubmissionDeploymentMode;
+}) {
 	const pathname = usePathname();
 	const layout = useAtomValue(layoutAtom);
 	const categories = useAtomValue(categoriesAtom);
-	const enabledAds = useAtomValue(enabledAdsAtom);
-	const adsAspectRatio = useAtomValue(adsAspectRatioAtom);
-	const showAds = useAtomValue(showAdsAtom);
+	const homeAds = useAtomValue(homeAdsAtom);
+	const sidebarAds = useAtomValue(sidebarAdsAtom);
+	const homeAdsAutoplayInterval = useAtomValue(homeAdsAutoplayIntervalAtom);
+	const sidebarAdsAutoplayInterval = useAtomValue(
+		sidebarAdsAutoplayIntervalAtom,
+	);
+	const homeAdsAspectRatio = useAtomValue(homeAdsAspectRatioAtom);
+	const sidebarAdsAspectRatio = useAtomValue(sidebarAdsAspectRatioAtom);
+	const homeAdsEnabled = useAtomValue(homeAdsEnabledAtom);
+	const sidebarAdsEnabled = useAtomValue(sidebarAdsEnabledAtom);
+	const homeAdsGap = useAtomValue(homeAdsGapAtom);
+	const homeAdsVisibleCount = useAtomValue(homeAdsVisibleCountAtom);
 	const showRecentVisits = useAtomValue(showRecentVisitsAtom);
 	const recentVisitsMax = useAtomValue(recentVisitsMaxAtom);
 	const showSubcategoryTabs = useAtomValue(showSubcategoryTabsAtom);
+	const submission = useAtomValue(submissionConfigAtom);
 	const setActiveId = useSetAtom(activeIdAtom);
 
 	// 滚动监听：只写入 activeIdAtom，不触发本组件重渲染
@@ -79,9 +105,14 @@ export function AppLayout() {
 				{layout.showSidebar && displayCategories.length > 0 && (
 					<AppSidebar
 						width={sidebarWidth}
-						ads={enabledAds}
-						showAds={showAds}
-						adsAspectRatio={adsAspectRatio}
+						ads={sidebarAds}
+						showAds={sidebarAdsEnabled}
+						adsAspectRatio={sidebarAdsAspectRatio}
+						autoplayInterval={sidebarAdsAutoplayInterval}
+						cardStyle={layout.cardStyle}
+						showSubmissionAction={
+							submission.enabled && submission.showSidebarButton
+						}
 					/>
 				)}
 
@@ -109,6 +140,12 @@ export function AppLayout() {
 								cardGrid={cardGrid}
 								categorySectionView={categorySectionView}
 								sectionsStyle={sectionsStyle}
+								ads={homeAds}
+								adsAspectRatio={homeAdsAspectRatio}
+								adsGap={homeAdsGap}
+								adsVisibleCount={homeAdsVisibleCount}
+								autoplayInterval={homeAdsAutoplayInterval}
+								showHomeAds={homeAdsEnabled}
 							/>
 						)}
 					</main>
@@ -119,9 +156,17 @@ export function AppLayout() {
 				</div>
 			</div>
 
-			{layout.showFloatingActions && (
-				<FloatingActions showQrCode={layout.showFloatingQrCode} />
+			{(layout.showFloatingActions ||
+				(submission.enabled && submission.showFloatingButton)) && (
+				<FloatingActions
+					showActions={layout.showFloatingActions}
+					showQrCode={layout.showFloatingQrCode}
+					showSubmission={
+						submission.enabled && submission.showFloatingButton
+					}
+				/>
 			)}
+			<SubmissionDialogHost deploymentMode={deploymentMode} />
 		</div>
 	);
 }

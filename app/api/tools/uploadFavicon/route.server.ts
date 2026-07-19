@@ -76,12 +76,13 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: "图标过大（最大 2MB）" }, { status: 413 });
 		}
 
-		const convertToWebp = readNav().imageUpload?.convertToWebp === true;
+		const imageUpload = readNav().imageUpload;
 		const url = await saveImageAsset(`favicon${ext}`, bytes, {
 			dedupeByContent: true,
 			preferredExistingUrl: body.existingIconUrl,
 			contentType: contentTypeFromExt(ext),
-			forceWebp: convertToWebp,
+			compress: imageUpload?.compress === true,
+			forceWebp: imageUpload?.convertToWebp === true,
 		});
 		return NextResponse.json({ url });
 	} catch (e) {

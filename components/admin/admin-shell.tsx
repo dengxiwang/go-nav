@@ -38,6 +38,7 @@ import {
 	BiListCheck,
 	BiImage,
 	BiSync,
+	BiMessageSquareAdd,
 } from "react-icons/bi";
 import {
 	applyImportAtom,
@@ -53,6 +54,7 @@ import { AdminScrollTopButton } from "./scroll-top-button";
 type RouteKey =
 	| "categories"
 	| "sites"
+	| "submissions"
 	| "batch"
 	| "website"
 	| "website-layout"
@@ -92,6 +94,12 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 				desc: "全局搜索与批量编辑网站条目",
 			},
 			{
+				key: "submissions",
+				label: "投稿收录",
+				icon: <BiMessageSquareAdd className="size-5" />,
+				desc: "入口配置、投稿内容与审核收录",
+			},
+			{
 				key: "batch",
 				label: "批量更新网址",
 				icon: <BiListCheck className="size-5" />,
@@ -124,7 +132,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 				key: "website-layout",
 				label: "布局配置",
 				icon: <BiLayout className="size-5" />,
-				desc: "侧边栏 / 卡片 / 间距等",
+				desc: "侧边栏 / 最近访问 / 卡片 / 间距",
 			},
 			{
 				key: "website-theme",
@@ -147,7 +155,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 				key: "ads",
 				label: "广告管理",
 				icon: <BiStar className="size-5" />,
-				desc: "广告位、最近访问等首页模块",
+				desc: "广告位展示、排序与内容",
 			},
 			{
 				key: "engines",

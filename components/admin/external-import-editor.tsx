@@ -8,7 +8,6 @@ import {
 	InputGroup,
 	Label,
 	Link,
-	Switch,
 	Table,
 	TextArea,
 	TextField,
@@ -33,6 +32,7 @@ import {
 	summarizeWebsiteData,
 	type BookmarkImportResult,
 } from "@/lib/bookmark-import";
+import { AdminSwitch } from "./admin-switch";
 import { getIconImageSrc } from "@/lib/icon";
 import { applyImportAtom, categoriesAtom } from "@/lib/store/admin";
 import type { NavSite, WebsiteData } from "@/types";
@@ -425,18 +425,13 @@ export function ExternalImportEditor() {
 						</p>
 					</div>
 
-					<Switch
+					<AdminSwitch
 						isSelected={keepExisting}
 						onChange={setKeepExisting}
-						aria-label="保留现有数据"
+						ariaLabel="保留现有数据"
 					>
-						<Switch.Control>
-							<Switch.Thumb />
-						</Switch.Control>
-						<Switch.Content>
-							<Label className="text-sm font-medium">保留现有数据并追加</Label>
-						</Switch.Content>
-					</Switch>
+						<span className="text-sm font-medium">保留现有数据并追加</span>
+					</AdminSwitch>
 				</div>
 
 				<div className="grid gap-3 px-5 py-4 md:grid-cols-3">

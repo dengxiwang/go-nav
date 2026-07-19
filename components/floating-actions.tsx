@@ -3,12 +3,14 @@ import { AiOutlineQrcode } from "react-icons/ai";
 import { Button, toast } from "@heroui/react";
 import Image from "next/image";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
+import { BiBookmarkPlus } from "react-icons/bi";
 import {
 	hasIntranetSitesAtom,
 	layoutAtom,
 	navQrCodeAtom,
 	navQrCodeTextAtom,
+	submissionDialogOpenAtom,
 } from "@/lib/store/site";
 import {
 	getSiteLinkModeLabel,
@@ -25,14 +27,19 @@ import { FLOATING_ACTION_TRANSITION_CLASS } from "./ui/ui.constants";
  * - showTop state 由自己的 scroll 监听调度，memo 防止父级重渲染牵连
  */
 export const FloatingActions = memo(function FloatingActions({
+	showActions = true,
 	showQrCode = true,
+	showSubmission = false,
 }: {
+	showActions?: boolean;
 	showQrCode?: boolean;
+	showSubmission?: boolean;
 }) {
 	const qrCode = useAtomValue(navQrCodeAtom);
 	const qrCodeText = useAtomValue(navQrCodeTextAtom);
 	const layout = useAtomValue(layoutAtom);
 	const hasIntranetSites = useAtomValue(hasIntranetSitesAtom);
+	const setSubmissionOpen = useSetAtom(submissionDialogOpenAtom);
 	const autoUseIntranet = layout.autoUseIntranet === true;
 	const [showTop, setShowTop] = useState(false);
 	const [showQrPanel, setShowQrPanel] = useState(false);
@@ -139,7 +146,7 @@ export const FloatingActions = memo(function FloatingActions({
 
 	return (
 		<div className="fixed bottom-8 right-6 z-50 flex flex-col items-center gap-3">
-			<Button
+			{showActions && <Button
 				size="lg"
 				isIconOnly
 				aria-label="回到顶部"
@@ -163,9 +170,9 @@ export const FloatingActions = memo(function FloatingActions({
 						d="M5 15l7-7 7 7"
 					/>
 				</svg>
-			</Button>
+			</Button>}
 
-			{showQrCode && qrCode && (
+			{showActions && showQrCode && qrCode && (
 				<div ref={qrContainerRef} className="group relative flex items-center">
 					<div
 						id="floating-actions-qr-panel"
@@ -208,7 +215,7 @@ export const FloatingActions = memo(function FloatingActions({
 				</div>
 			)}
 
-			{!autoUseIntranet && hasIntranetSites && (
+			{showActions && !autoUseIntranet && hasIntranetSites && (
 				<Button
 					size="lg"
 					aria-label={`当前${getSiteLinkModeLabel(siteLinkMode)}模式，点击切换`}
@@ -260,7 +267,7 @@ export const FloatingActions = memo(function FloatingActions({
 				</Button>
 			)}
 
-			<Button
+			{showActions && <Button
 				size="lg"
 				isIconOnly
 				aria-label="打开项目 GitHub"
@@ -271,7 +278,20 @@ export const FloatingActions = memo(function FloatingActions({
 				<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 					<path d="M12 1.25a10.75 10.75 0 0 0-3.4 20.95c.54.1.73-.23.73-.52v-1.84c-2.98.64-3.6-1.28-3.6-1.28-.49-1.23-1.18-1.55-1.18-1.55-.96-.65.07-.64.07-.64 1.06.07 1.62 1.08 1.62 1.08.95 1.61 2.48 1.15 3.08.88.09-.68.37-1.15.67-1.42-2.38-.27-4.88-1.18-4.88-5.28 0-1.17.42-2.12 1.1-2.87-.11-.27-.48-1.37.11-2.85 0 0 .9-.29 2.95 1.09a10.56 10.56 0 0 1 5.38 0c2.04-1.38 2.94-1.09 2.94-1.09.59 1.48.22 2.58.11 2.85.69.75 1.1 1.7 1.1 2.87 0 4.11-2.5 5-4.89 5.27.38.33.72.96.72 1.93v2.86c0 .29.19.63.74.52A10.75 10.75 0 0 0 12 1.25Z" />
 				</svg>
-			</Button>
+			</Button>}
+
+			{showSubmission && (
+				<Button
+					size="lg"
+					isIconOnly
+					aria-label="我要投稿"
+					variant="primary"
+					className={`rounded-full shadow-lg ${FLOATING_ACTION_TRANSITION_CLASS} duration-300 [@media(hover:hover)]:hover:-translate-y-0.5`}
+					onPress={() => setSubmissionOpen(true)}
+				>
+					<BiBookmarkPlus className="size-5" />
+				</Button>
+			)}
 		</div>
 	);
 });

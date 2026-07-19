@@ -41,21 +41,29 @@ function parseSafeColor(value: string | undefined) {
 export function IconPicker({
 	value,
 	onChange,
+	isDisabled = false,
+	isInline = false,
 	bgColor,
 	onBgColorChange,
 	iconPadding,
 	defaultIconPadding,
 	onIconPaddingChange,
 	placeholder = "URL / emoji / 留空",
+	uploadPrefix = "icon",
 }: {
 	value: string | undefined;
 	onChange: (v: string) => void;
+	isDisabled?: boolean;
+	/** 强制将预览、输入框和上传按钮保持在同一行。 */
+	isInline?: boolean;
 	bgColor?: string;
 	onBgColorChange?: (v: string) => void;
 	iconPadding?: string;
 	defaultIconPadding?: string;
 	onIconPaddingChange?: (v: string) => void;
 	placeholder?: string;
+	/** 上传文件保存时使用的语义化英文前缀。 */
+	uploadPrefix?: string;
 }) {
 	const fileRef = useRef<HTMLInputElement>(null);
 	const [uploading, setUploading] = useState(false);
@@ -70,12 +78,15 @@ export function IconPicker({
 	const pickerColor = parseSafeColor(bgColor);
 
 	const uploadFile = async (f: File) => {
+		if (isDisabled) return;
 		setUploading(true);
 		try {
 			const url = await uploadImageWithCompression(f, {
 				maxEdge: 512,
 				quality: 0.82,
+				compress: nav.imageUpload?.compress === true,
 				forceWebp: nav.imageUpload?.convertToWebp === true,
+				fileNamePrefix: uploadPrefix,
 			});
 			onChange(url);
 		} catch (e) {
@@ -93,6 +104,7 @@ export function IconPicker({
 	};
 
 	const onPasteImage = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+		if (isDisabled) return;
 		const file = e.clipboardData.items
 			? Array.from(e.clipboardData.items)
 					.find(
@@ -119,7 +131,9 @@ export function IconPicker({
 
 	return (
 		<div className="flex flex-col gap-1">
-			<div className="flex items-center gap-2 flex-wrap">
+			<div
+				className={`flex items-center gap-2 ${isInline ? "flex-nowrap" : "flex-wrap"}`}
+			>
 				<div
 					className="flex h-9 w-9 shrink-0 items-center justify-center rounded border"
 					style={{
@@ -129,7 +143,12 @@ export function IconPicker({
 				>
 					{preview ?? <span className="text-xs text-muted">空</span>}
 				</div>
-				<TextField value={value ?? ""} onChange={onChange}>
+				<TextField
+					className={isInline ? "min-w-0 flex-1" : undefined}
+					isDisabled={isDisabled}
+					value={value ?? ""}
+					onChange={onChange}
+				>
 					<Label className="sr-only">图标</Label>
 					<Input placeholder={placeholder} onPaste={onPasteImage} />
 				</TextField>
@@ -137,7 +156,7 @@ export function IconPicker({
 					type="button"
 					variant="outline"
 					size="sm"
-					isDisabled={uploading}
+					isDisabled={isDisabled || uploading}
 					onPress={() => fileRef.current?.click()}
 				>
 					{uploading ? "上传中..." : "上传"}
@@ -145,6 +164,7 @@ export function IconPicker({
 				{onIconPaddingChange && (
 					<TextField
 						className="flex flex-row items-center"
+						isDisabled={isDisabled}
 						value={parsedIconPadding == null ? "" : String(parsedIconPadding)}
 						onChange={onIconPaddingChange}
 					>
@@ -224,6 +244,7 @@ export function IconPicker({
 					type="file"
 					accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon,.ico,.svg"
 					className="hidden"
+					disabled={isDisabled}
 					onChange={onFileChosen}
 				/>
 			</div>

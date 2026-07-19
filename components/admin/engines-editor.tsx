@@ -1,21 +1,21 @@
 "use client";
 
 import {
+	AlertDialog,
 	Button,
 	Chip,
 	Input,
 	Label,
-	Switch,
-	TextField,
-	Table,
-	Modal,
 	Separator,
+	Table,
 	Tabs,
+	TextField,
 } from "@heroui/react";
 import type { NavConfig, SearchEngine } from "@/types";
 import { useAtom } from "jotai";
 import { navAtom } from "@/lib/store/admin";
 import { IconPicker } from "./icon-picker";
+import { AdminSwitch } from "./admin-switch";
 import {
 	BiPlus,
 	BiTrash,
@@ -64,13 +64,13 @@ export function EnginesEditor() {
 
 	const addEngine = () =>
 		setEngines([
-			...s.engines,
 			{
 				id: `engine-${Date.now()}`,
 				name: "新引擎",
 				icon: "🔍",
 				url: "https://example.com/?q={query}",
 			},
+			...s.engines,
 		]);
 
 	const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
@@ -91,207 +91,221 @@ export function EnginesEditor() {
 	];
 
 	return (
-		<Tabs defaultSelectedKey="config" className="w-full">
-			<Tabs.ListContainer>
-				<Tabs.List aria-label="搜索引擎管理" className="w-fit">
-					<Tabs.Tab id="config">
-						功能配置
-						<Tabs.Indicator />
-					</Tabs.Tab>
-					<Tabs.Tab id="list">
-						搜索引擎
-						<Tabs.Indicator />
-					</Tabs.Tab>
-				</Tabs.List>
-			</Tabs.ListContainer>
+		<>
+			<Tabs defaultSelectedKey="config" className="w-full">
+				<Tabs.ListContainer>
+					<Tabs.List aria-label="搜索引擎管理" className="w-fit">
+						<Tabs.Tab id="config">
+							功能配置
+							<Tabs.Indicator />
+						</Tabs.Tab>
+						<Tabs.Tab id="list">
+							搜索引擎
+							<Tabs.Indicator />
+						</Tabs.Tab>
+					</Tabs.List>
+				</Tabs.ListContainer>
 
-			<Tabs.Panel id="config">
-				<div className="flex flex-col gap-4">
-					<div>
-						<h3 className="text-sm font-semibold">搜索功能配置</h3>
-						<p className="mt-1 text-xs text-default-500">
-							配置搜索栏的显示和行为
-						</p>
-					</div>
-
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-						<div className="flex flex-col gap-2">
-							<Label className="text-sm font-medium">
-								默认引擎 ID（本站请设置为：local）
-							</Label>
-							<TextField
-								value={s.defaultEngine}
-								onChange={(v) => patch({ defaultEngine: v })}
-							>
-								<Label className="sr-only">defaultEngine</Label>
-								<Input placeholder="local / baidu / google ..." />
-							</TextField>
+				<Tabs.Panel id="config">
+					<div className="flex flex-col gap-4">
+						<div>
+							<h3 className="text-sm font-semibold">搜索功能配置</h3>
+							<p className="mt-1 text-xs text-default-500">
+								配置搜索栏的显示和行为
+							</p>
 						</div>
 
-						<div className="flex flex-col gap-2">
-							<Label className="text-sm font-medium">占位文字</Label>
-							<TextField
-								value={s.placeholder}
-								onChange={(v) => patch({ placeholder: v })}
-							>
-								<Label className="sr-only">placeholder</Label>
-								<Input placeholder="搜索你想要的内容..." />
-							</TextField>
-						</div>
-					</div>
-
-					<Separator />
-
-					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-						{switchItems.map((item) => {
-							const cur = (s[item.key] as boolean | undefined) ?? item.def;
-							return (
-								<Switch
-									key={item.key as string}
-									isSelected={cur}
-									onChange={(v) => patchSwitch(item.key, v)}
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<div className="flex flex-col gap-2">
+								<Label className="text-sm font-medium">
+									默认引擎 ID（本站请设置为：local）
+								</Label>
+								<TextField
+									value={s.defaultEngine}
+									onChange={(v) => patch({ defaultEngine: v })}
 								>
-									<Switch.Control>
-										<Switch.Thumb />
-									</Switch.Control>
-									<Switch.Content>
-										<Label className="text-sm">{item.label}</Label>
-									</Switch.Content>
-								</Switch>
-							);
-						})}
-					</div>
+									<Label className="sr-only">defaultEngine</Label>
+									<Input placeholder="local / baidu / google ..." />
+								</TextField>
+							</div>
 
-					{s.enableLocalSearch && (
-						<div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
-							本地搜索会在当前导航数据中按标题、描述和标签进行关键词匹配过滤，无需外部
-							API。
-						</div>
-					)}
-
-					{s.enableSuggestion && (
-						<div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-							搜索联想词功能会请求百度搜索建议 API，非百度引擎时可能不适用。
-						</div>
-					)}
-				</div>
-			</Tabs.Panel>
-
-			<Tabs.Panel id="list" className="px-0">
-				<div className="flex flex-col gap-4">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2 px-2">
-							<h3 className="text-base font-semibold">外部搜索引擎</h3>
-							<Chip variant="secondary" size="sm">
-								<Chip.Label>{s.engines.length}</Chip.Label>
-							</Chip>
-						</div>
-						<Button variant="primary" size="sm" onPress={addEngine}>
-							<BiPlus data-icon="inline-start" />
-							新增引擎
-						</Button>
-					</div>
-
-					{s.engines.length === 0 ? (
-						<div className="flex h-48 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-neutral-800">
-							<div className="text-center">
-								<BiGlobe className="mx-auto mb-2 size-8" />
-								<p className="text-sm text-default-500">
-									暂无引擎，点击右上角新增
-								</p>
-								<p className="mt-1 text-xs">
-									URL 中请使用 {"{query}"} 作为搜索词占位符
-								</p>
+							<div className="flex flex-col gap-2">
+								<Label className="text-sm font-medium">占位文字</Label>
+								<TextField
+									value={s.placeholder}
+									onChange={(v) => patch({ placeholder: v })}
+								>
+									<Label className="sr-only">placeholder</Label>
+									<Input placeholder="搜索你想要的内容..." />
+								</TextField>
 							</div>
 						</div>
-					) : (
-						<Table variant="secondary" aria-label="搜索引擎列表">
-							<Table.ScrollContainer>
-								<Table.Content aria-label="搜索引擎列表">
-									<Table.Header>
-										<Table.Column className="w-20">图标</Table.Column>
-										<Table.Column isRowHeader className="w-36">
-											ID
-										</Table.Column>
-										<Table.Column className="w-40">名称</Table.Column>
-										<Table.Column>URL (使用 {"{query}"} 占位)</Table.Column>
-										<Table.Column className="w-40">操作</Table.Column>
-									</Table.Header>
-									<Table.Body
-										renderEmptyState={() => (
-											<div className="py-12 text-center text-sm text-default-500">
-												暂无引擎
-											</div>
-										)}
+
+						<Separator />
+
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+							{switchItems.map((item) => {
+								const cur = (s[item.key] as boolean | undefined) ?? item.def;
+								return (
+									<AdminSwitch
+										key={item.key as string}
+										isSelected={cur}
+										onChange={(v) => patchSwitch(item.key, v)}
 									>
-										{s.engines.map((eng, idx) => (
-											<EngineRow
-												key={eng.id}
-												eng={eng}
-												isDefault={eng.id === s.defaultEngine}
-												isFirst={idx === 0}
-												isLast={idx === s.engines.length - 1}
-												onChange={(next) => {
-													const copy = [...s.engines];
-													copy[idx] = next;
-													setEngines(copy);
-												}}
-												onDelete={() => setDeleteConfirm(idx)}
-												onSetDefault={() => patch({ defaultEngine: eng.id })}
-												onMoveUp={() => moveEngine(idx, "up")}
-												onMoveDown={() => moveEngine(idx, "down")}
-											/>
-										))}
-									</Table.Body>
-								</Table.Content>
-							</Table.ScrollContainer>
-						</Table>
-					)}
-				</div>
-			</Tabs.Panel>
+										<span className="text-sm">{item.label}</span>
+									</AdminSwitch>
+								);
+							})}
+						</div>
+
+						{s.enableLocalSearch && (
+							<div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+								本地搜索会在当前导航数据中按标题、描述和标签进行关键词匹配过滤，无需外部
+								API。
+							</div>
+						)}
+
+						{s.enableSuggestion && (
+							<div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+								搜索联想词功能会请求百度搜索建议 API，非百度引擎时可能不适用。
+							</div>
+						)}
+					</div>
+				</Tabs.Panel>
+
+				<Tabs.Panel id="list" className="px-0">
+					<div className="flex flex-col gap-4">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2 px-2">
+								<h3 className="text-base font-semibold">外部搜索引擎</h3>
+								<Chip variant="secondary" size="sm">
+									<Chip.Label>{s.engines.length}</Chip.Label>
+								</Chip>
+							</div>
+							<Button variant="primary" size="sm" onPress={addEngine}>
+								<BiPlus data-icon="inline-start" />
+								新增引擎
+							</Button>
+						</div>
+
+						{s.engines.length === 0 ? (
+							<div className="flex h-48 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 dark:border-neutral-800">
+								<div className="text-center">
+									<BiGlobe className="mx-auto mb-2 size-8" />
+									<p className="text-sm text-default-500">
+										暂无引擎，点击右上角新增
+									</p>
+									<p className="mt-1 text-xs">
+										URL 中请使用 {"{query}"} 作为搜索词占位符
+									</p>
+								</div>
+							</div>
+						) : (
+							<Table variant="secondary" aria-label="搜索引擎列表">
+								<Table.ScrollContainer>
+									<Table.Content
+										aria-label="搜索引擎列表"
+										className="min-w-[96rem]"
+									>
+										<Table.Header>
+											<Table.Column className="min-w-[26rem] whitespace-nowrap">
+												图标
+											</Table.Column>
+											<Table.Column
+												isRowHeader
+												className="min-w-80 whitespace-nowrap"
+											>
+												ID
+											</Table.Column>
+											<Table.Column className="min-w-56 whitespace-nowrap">
+												名称
+											</Table.Column>
+											<Table.Column className="min-w-[26rem] whitespace-nowrap">
+												URL (使用 {"{query}"} 占位)
+											</Table.Column>
+											<Table.Column className="w-40 whitespace-nowrap">
+												操作
+											</Table.Column>
+										</Table.Header>
+										<Table.Body
+											renderEmptyState={() => (
+												<div className="py-12 text-center text-sm text-default-500">
+													暂无引擎
+												</div>
+											)}
+										>
+											{s.engines.map((eng, idx) => (
+												<EngineRow
+													key={eng.id}
+													eng={eng}
+													isDefault={eng.id === s.defaultEngine}
+													isFirst={idx === 0}
+													isLast={idx === s.engines.length - 1}
+													onChange={(next) => {
+														const copy = [...s.engines];
+														copy[idx] = next;
+														setEngines(copy);
+													}}
+													onDelete={() => setDeleteConfirm(idx)}
+													onSetDefault={() => patch({ defaultEngine: eng.id })}
+													onMoveUp={() => moveEngine(idx, "up")}
+													onMoveDown={() => moveEngine(idx, "down")}
+												/>
+											))}
+										</Table.Body>
+									</Table.Content>
+								</Table.ScrollContainer>
+							</Table>
+						)}
+					</div>
+				</Tabs.Panel>
+			</Tabs>
 
 			{/* 删除确认对话框 */}
-			<Modal>
-				<Modal.Backdrop
-					isOpen={deleteConfirm !== null}
-					onOpenChange={(open) => !open && setDeleteConfirm(null)}
-				>
-					<Modal.Container>
-						<Modal.Dialog>
-							<Modal.Header>
-								<Modal.Heading>确认删除引擎</Modal.Heading>
-							</Modal.Header>
-							<Modal.Body>
-								<p className="text-sm">
-									删除后该搜索引擎数据将被永久删除，此操作不可撤销。
-								</p>
-							</Modal.Body>
-							<Modal.Footer>
-								<Button
-									variant="outline"
-									onPress={() => setDeleteConfirm(null)}
-								>
-									取消
-								</Button>
-								<Button
-									variant="danger"
-									onPress={() => {
-										if (deleteConfirm !== null) {
-											setEngines(
-												s.engines.filter((_, i) => i !== deleteConfirm),
-											);
-											setDeleteConfirm(null);
-										}
-									}}
-								>
-									确认删除
-								</Button>
-							</Modal.Footer>
-						</Modal.Dialog>
-					</Modal.Container>
-				</Modal.Backdrop>
-			</Modal>
-		</Tabs>
+			<AlertDialog.Backdrop
+				isOpen={deleteConfirm !== null}
+				isDismissable
+				isKeyboardDismissDisabled
+				onOpenChange={(open) => !open && setDeleteConfirm(null)}
+			>
+				<AlertDialog.Container placement="center" size="sm">
+					<AlertDialog.Dialog className="sm:max-w-[400px]">
+						<AlertDialog.Header>
+							<AlertDialog.Icon status="danger">
+								<BiTrash />
+							</AlertDialog.Icon>
+							<AlertDialog.Heading>确认删除引擎</AlertDialog.Heading>
+						</AlertDialog.Header>
+						<AlertDialog.Body>
+							<p className="text-sm">
+								删除后该搜索引擎数据将被永久删除，此操作不可撤销。
+							</p>
+						</AlertDialog.Body>
+						<AlertDialog.Footer>
+							<Button
+								variant="tertiary"
+								onPress={() => setDeleteConfirm(null)}
+							>
+								取消
+							</Button>
+							<Button
+								variant="danger"
+								onPress={() => {
+									if (deleteConfirm !== null) {
+										setEngines(
+											s.engines.filter((_, i) => i !== deleteConfirm),
+										);
+										setDeleteConfirm(null);
+									}
+								}}
+							>
+								确认删除
+							</Button>
+						</AlertDialog.Footer>
+					</AlertDialog.Dialog>
+				</AlertDialog.Container>
+			</AlertDialog.Backdrop>
+		</>
 	);
 }
 
@@ -336,7 +350,11 @@ function EngineRow({
 	return (
 		<Table.Row key={eng.id} id={eng.id}>
 			<Table.Cell>
-				<IconPicker value={eng.icon} onChange={(v) => patch({ icon: v })} />
+				<IconPicker
+					isInline
+					value={eng.icon}
+					onChange={(v) => patch({ icon: v })}
+				/>
 			</Table.Cell>
 			<Table.Cell>
 				<div className="flex items-center gap-1.5">

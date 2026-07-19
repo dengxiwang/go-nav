@@ -38,6 +38,7 @@ Go Nav 同时支持两种部署形态：
 - **站内搜索**：前端本地搜索支持标题、描述、标签和分类名命中。
 - **外部搜索引擎**：可配置百度、Bing、Google 等搜索 URL，使用 `{query}` 作为搜索词占位符。
 - **后台管理**：server 模式下提供 `/admin`，可管理网站信息、分类、站点、广告、搜索引擎、插件、备份和上传素材。
+- **投稿收录**：支持侧栏与独立悬浮入口；动态部署写入本地审核队列，静态部署生成预填投稿邮件。
 - **双构建模式**：`server` 模式保留后台和 API；`static` 模式导出纯静态页面，适合 GitHub Pages、对象存储、CDN。
 - **Docker 友好**：内置 Dockerfile、Compose 配置和发布脚本，镜像自带默认数据，挂载数据目录时优先使用用户数据。
 - **上传与备份**：支持图片上传、完整 ZIP 备份、备份还原和无用素材清理。
@@ -271,6 +272,7 @@ pnpm build:static
 data/
 ├── nav.json       # 站点设置、搜索、广告、布局、插件等
 ├── website.json   # 分类和网址数据
+├── submissions.json # 动态部署收到的投稿审核队列（自动生成，不提交到 Git）
 └── uploads/       # 后台上传的图片素材，默认不提交到 Git
 ```
 
@@ -285,6 +287,7 @@ Docker 中固定使用 `/app/data` 作为容器内数据目录。推荐把宿主
 ```text
 /app/data/nav.json
 /app/data/website.json
+/app/data/submissions.json
 /app/data/uploads/
 ```
 
@@ -302,7 +305,8 @@ Docker 中固定使用 `/app/data` 作为容器内数据目录。推荐把宿主
 | `footerLinks`                                 | 页脚链接数组                |
 | `themeMode`                                   | `light`、`dark` 或 `system` |
 | `search`                                      | 搜索配置                    |
-| `ads` / `showAds` / `adsAspectRatio`          | 广告配置                    |
+| `ads` / `homeAdsEnabled` / `sidebarAdsEnabled` / `homeAdsAutoplayInterval` / `sidebarAdsAutoplayInterval` / `homeAdsAspectRatio` / `sidebarAdsAspectRatio` / `homeAdsVisibleCount` / `homeAdsGap` | 主页与侧边广告的独立开关、切换速度、比例，以及主页展示数量和卡片间距配置 |
+| `submission`                                  | 投稿入口与静态投稿邮箱配置  |
 | `showRecentVisits` / `recentVisitsMax`        | 最近访问配置                |
 | `layout`                                      | 布局与显示开关              |
 | `plugins`                                     | 自定义 CSS / JS 片段        |
@@ -340,9 +344,12 @@ server 模式访问 `/admin` 登录后台。后台可编辑：
 
 - 网站基础信息、主题、页脚、布局
 - 分类与网站条目，网址标签支持英文逗号 `,` 或中文逗号 `，` 分隔
+- 投稿入口配置、动态投稿审核、编辑后收录到指定分类
 - 搜索引擎与搜索行为
 - 广告位、捐赠/二维码、插件
 - 图片上传、备份导出、备份还原、无用素材清理
+
+投稿功能根据构建模式自动切换：server 模式把投稿保存到 `data/submissions.json` 并在“内容管理 → 投稿收录”中审核；static 模式不会调用 API，而是使用后台配置的邮箱生成预填邮件。右下角投稿按钮拥有独立显示优先级，不受布局配置中的“悬浮操作按钮”总开关影响。
 
 上传接口仅接受 `png`、`jpg`、`gif`、`webp`、`ico` 图片，单文件最大 2MB。备份还原最大 20MB。
 

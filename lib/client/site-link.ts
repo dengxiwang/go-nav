@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { LayoutConfig } from "@/types";
+import { withAuthorBaiduTracking } from "@/lib/external-url";
 
 export type SiteLinkMode = "intranet" | "public";
 
@@ -11,6 +12,8 @@ const REACHABLE_CACHE_TTL = 60_000;
 const REACHABLE_TIMEOUT_MS = 1_500;
 
 const reachabilityCache = new Map<string, { value: boolean; expiresAt: number }>();
+const siteLinkModeListeners = new Set<(mode: SiteLinkMode) => void>();
+let cleanupSiteLinkModeEvents: (() => void) | null = null;
 
 export interface SiteLinkLike {
 	url: string;
@@ -41,14 +44,14 @@ function sanitizeUrl(url: string | undefined): string {
 		if (/^localhost:\d+$/i.test(value) || /^127\.0\.0\.1:\d+$/i.test(value)) {
 			return `http://${value}`;
 		}
-		return value;
+		return withAuthorBaiduTracking(value);
 	}
-	if (value.startsWith("//")) return `https:${value}`;
+	if (value.startsWith("//")) return withAuthorBaiduTracking(`https:${value}`);
 	if (/^(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(value)) {
 		return `http://${value}`;
 	}
 	if (/^[^\s/]+\.[^\s/]+/.test(value)) {
-		return `https://${value}`;
+		return withAuthorBaiduTracking(`https://${value}`);
 	}
 	return value;
 }
@@ -80,30 +83,48 @@ export function setStoredSiteLinkMode(mode: SiteLinkMode) {
 export function subscribeSiteLinkMode(listener: (mode: SiteLinkMode) => void) {
 	if (typeof window === "undefined") return () => undefined;
 
-	const handleCustomEvent = (event: Event) => {
-		const mode = (event as CustomEvent<SiteLinkMode>).detail;
-		if (mode === "intranet" || mode === "public") {
-			listener(mode);
-		}
-	};
+	siteLinkModeListeners.add(listener);
+	if (!cleanupSiteLinkModeEvents) {
+		const notify = (mode: SiteLinkMode) => {
+			for (const currentListener of siteLinkModeListeners) {
+				currentListener(mode);
+			}
+		};
 
-	const handleStorage = (event: StorageEvent) => {
-		if (event.key !== MODE_STORAGE_KEY) return;
-		listener(getStoredSiteLinkMode());
-	};
+		const handleCustomEvent = (event: Event) => {
+			const mode = (event as CustomEvent<SiteLinkMode>).detail;
+			if (mode === "intranet" || mode === "public") {
+				notify(mode);
+			}
+		};
 
-	window.addEventListener(MODE_EVENT_KEY, handleCustomEvent);
-	window.addEventListener("storage", handleStorage);
+		const handleStorage = (event: StorageEvent) => {
+			if (event.key !== MODE_STORAGE_KEY) return;
+			notify(getStoredSiteLinkMode());
+		};
+
+		window.addEventListener(MODE_EVENT_KEY, handleCustomEvent);
+		window.addEventListener("storage", handleStorage);
+		cleanupSiteLinkModeEvents = () => {
+			window.removeEventListener(MODE_EVENT_KEY, handleCustomEvent);
+			window.removeEventListener("storage", handleStorage);
+			cleanupSiteLinkModeEvents = null;
+		};
+	}
 
 	return () => {
-		window.removeEventListener(MODE_EVENT_KEY, handleCustomEvent);
-		window.removeEventListener("storage", handleStorage);
+		siteLinkModeListeners.delete(listener);
+		if (siteLinkModeListeners.size === 0) cleanupSiteLinkModeEvents?.();
 	};
+}
+
+function subscribeSiteLinkModeStore(onStoreChange: () => void) {
+	return subscribeSiteLinkMode(() => onStoreChange());
 }
 
 export function useSiteLinkMode(): SiteLinkMode {
 	return useSyncExternalStore(
-		(onStoreChange) => subscribeSiteLinkMode(() => onStoreChange()),
+		subscribeSiteLinkModeStore,
 		getStoredSiteLinkMode,
 		() => "public",
 	);

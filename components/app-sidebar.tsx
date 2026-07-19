@@ -4,7 +4,7 @@ import { memo } from "react";
 import { useAtomValue } from "jotai";
 import { CategorySidebar } from "./category-sidebar";
 import { AdBanner } from "./ad-banner";
-import type { AdConfig } from "@/types";
+import type { AdConfig, CardStyle } from "@/types";
 import { categoriesAtom } from "@/lib/store/site";
 import { useJumpToSection } from "@/hooks/use-active-section";
 
@@ -20,11 +20,17 @@ export const AppSidebar = memo(function AppSidebar({
 	ads = [],
 	showAds = true,
 	adsAspectRatio,
+	autoplayInterval,
+	cardStyle,
+	showSubmissionAction = false,
 }: {
 	width?: string;
 	ads?: AdConfig[];
 	showAds?: boolean;
 	adsAspectRatio?: string;
+	autoplayInterval?: number;
+	cardStyle?: CardStyle;
+	showSubmissionAction?: boolean;
 }) {
 	const categories = useAtomValue(categoriesAtom);
 	const onItemClick = useJumpToSection();
@@ -35,17 +41,25 @@ export const AppSidebar = memo(function AppSidebar({
 			style={{ width }}
 		>
 			<div className="flex-1 min-h-0 overflow-y-auto">
-				<CategorySidebar categories={categories} onItemClick={onItemClick} />
+				<CategorySidebar
+					categories={categories}
+					onItemClick={onItemClick}
+					showSubmissionAction={showSubmissionAction}
+				/>
 			</div>
 
 			{showAds && ads.length > 0 ? (
 				<div className="shrink-0 p-2 pt-3">
-					<div className="rounded-xl border border-black/8 dark:border-white/10 bg-white dark:bg-zinc-800 p-2">
-						<AdBanner ads={ads} aspectRatio={adsAspectRatio} />
-					</div>
+					<AdBanner
+						ads={ads}
+						aspectRatio={adsAspectRatio}
+						autoplayInterval={autoplayInterval}
+						cardStyle={cardStyle}
+						placement="sidebar"
+					/>
 				</div>
 			) : (
-				<div className="h-8" />
+				<div className="h-4" />
 			)}
 		</aside>
 	);

@@ -12,7 +12,6 @@ import type { Key } from "@heroui/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
-import { pinyin } from "pinyin-pro";
 import type { NavCategory } from "@/types";
 import {
 	activeIdAtom,
@@ -20,6 +19,7 @@ import {
 	showSubcategoryTabsAtom,
 } from "@/lib/store/site";
 import { IconView } from "./icon-view";
+import { SubmissionSidebarButton } from "./submission-trigger";
 
 function countSites(category: NavCategory): number {
 	let count = category.sites?.length ?? 0;
@@ -42,16 +42,6 @@ function flattenCategoriesForTree(categories: NavCategory[]): NavCategory[] {
 	return result;
 }
 
-function getPinyin(text: string): string {
-	return pinyin(text, { toneType: "none", type: "array" }).join("");
-}
-
-function getPinyinFirstLetters(text: string): string {
-	return pinyin(text, { toneType: "none", type: "array" })
-		.map((p) => p.charAt(0))
-		.join("");
-}
-
 interface CategorySearchEntry {
 	category: NavCategory;
 	text: string;
@@ -62,9 +52,11 @@ interface CategorySearchEntry {
 export const CategorySidebar = memo(function CategorySidebar({
 	categories,
 	onItemClick,
+	showSubmissionAction = false,
 }: {
 	categories: NavCategory[];
 	onItemClick?: (id: string) => void;
+	showSubmissionAction?: boolean;
 }) {
 	const activeId = useAtomValue(activeIdAtom);
 	const showSubcategoryTabs = useAtomValue(showSubcategoryTabsAtom);
@@ -73,6 +65,8 @@ export const CategorySidebar = memo(function CategorySidebar({
 	const router = useRouter();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchHighlightIndex, setSearchHighlightIndex] = useState(-1);
+	const [searchEntries, setSearchEntries] = useState<CategorySearchEntry[]>([]);
+	const [searchIndexReady, setSearchIndexReady] = useState(false);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	const displayCategories = useMemo(
@@ -81,18 +75,47 @@ export const CategorySidebar = memo(function CategorySidebar({
 		[categories, showSubcategoryTabs],
 	);
 
-	const searchEntries = useMemo<CategorySearchEntry[]>(
-		() => {
-			if (!showCategorySearch) return [];
-			return displayCategories.map((category) => ({
+	useEffect(() => {
+		if (!showCategorySearch) {
+			setSearchEntries([]);
+			return;
+		}
+
+		// 先提供中文/描述文本匹配，拼音索引在后台按需补全。
+		setSearchEntries(
+			displayCategories.map((category) => ({
 				category,
 				text: `${category.name}\u0001${category.description ?? ""}`.toLowerCase(),
-				pinyin: getPinyin(category.name).toLowerCase(),
-				pinyinInitials: getPinyinFirstLetters(category.name).toLowerCase(),
-			}));
-		},
-		[displayCategories, showCategorySearch],
-	);
+				pinyin: "",
+				pinyinInitials: "",
+			})),
+		);
+		if (!searchIndexReady) return;
+
+		let cancelled = false;
+		void import("@/lib/client/pinyin-search")
+			.then(({ createPinyinVariants }) => {
+				if (cancelled) return;
+				setSearchEntries(
+					displayCategories.map((category) => {
+						const variants = createPinyinVariants(category.name);
+						return {
+							category,
+							text: `${category.name}\u0001${category.description ?? ""}`.toLowerCase(),
+							pinyin: variants.full,
+							pinyinInitials: variants.initials,
+						};
+					}),
+				);
+			})
+			.catch(() => {
+				// 动态块加载失败时保留普通文本搜索。
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [displayCategories, searchIndexReady, showCategorySearch]);
 
 	const filteredCategories = useMemo(() => {
 		if (!showCategorySearch || !searchQuery.trim()) return displayCategories;
@@ -288,6 +311,7 @@ export const CategorySidebar = memo(function CategorySidebar({
 							<SearchField.Input
 								ref={searchInputRef}
 								placeholder="搜索分类..."
+								onFocus={() => setSearchIndexReady(true)}
 								onKeyDown={handleSearchKeyDown}
 							/>
 							<SearchField.ClearButton className="absolute right-0 cursor-pointer" />
@@ -355,6 +379,7 @@ export const CategorySidebar = memo(function CategorySidebar({
 					</ListBox>
 				)}
 			</div>
+			{showSubmissionAction && <SubmissionSidebarButton />}
 		</div>
 	);
 });

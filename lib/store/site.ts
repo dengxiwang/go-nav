@@ -8,6 +8,18 @@ import { atom } from "jotai";
 import type { Key } from "@heroui/react";
 import type { LayoutConfig, NavCategory, NavConfig, NavSite, WebsiteData } from "@/types";
 import { pluginHasRenderablePayload } from "@/lib/plugin-config";
+import { resolveSubmissionConfig } from "@/lib/submission";
+import {
+	resolveAdPlacement,
+	resolveHomeAdsAspectRatio,
+	resolveHomeAdsAutoplayInterval,
+	resolveHomeAdsEnabled,
+	resolveHomeAdsGap,
+	resolveHomeAdsVisibleCount,
+	resolveSidebarAdsAspectRatio,
+	resolveSidebarAdsAutoplayInterval,
+	resolveSidebarAdsEnabled,
+} from "@/lib/ad-display";
 
 /** 站点默认布局配置，和原 AppLayout 中保持一致 */
 export const DEFAULT_LAYOUT: Required<LayoutConfig> = {
@@ -61,6 +73,7 @@ const EMPTY_NAV: NavConfig = {
 	},
 	ads: [],
 	imageUpload: {
+		compress: false,
 		convertToWebp: false,
 	},
 };
@@ -84,6 +97,20 @@ export const enabledAdsAtom = atom((get) =>
 		.filter((a) => a.enabled)
 		.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)),
 );
+
+export const homeAdsAtom = atom((get) => {
+	const nav = get(siteNavAtom);
+	return get(enabledAdsAtom).filter(
+		(ad) => resolveAdPlacement(ad, nav.adsDisplayPosition) === "home-top",
+	);
+});
+
+export const sidebarAdsAtom = atom((get) => {
+	const nav = get(siteNavAtom);
+	return get(enabledAdsAtom).filter(
+		(ad) => resolveAdPlacement(ad, nav.adsDisplayPosition) === "sidebar",
+	);
+});
 
 export const flatSitesAtom = atom((get) => {
 	const result: Array<NavSite & { categoryId: string; categoryName: string }> =
@@ -125,10 +152,30 @@ export const footerLinksAtom = atom(
 	(get) => get(siteNavAtom).footerLinks ?? EMPTY_FOOTER_LINKS,
 );
 export const searchConfigAtom = atom((get) => get(siteNavAtom).search ?? EMPTY_NAV.search);
-export const adsAspectRatioAtom = atom(
-	(get) => get(siteNavAtom).adsAspectRatio,
+export const homeAdsAspectRatioAtom = atom((get) =>
+	resolveHomeAdsAspectRatio(get(siteNavAtom)),
 );
-export const showAdsAtom = atom((get) => get(siteNavAtom).showAds !== false);
+export const sidebarAdsAspectRatioAtom = atom((get) =>
+	resolveSidebarAdsAspectRatio(get(siteNavAtom)),
+);
+export const homeAdsEnabledAtom = atom((get) =>
+	resolveHomeAdsEnabled(get(siteNavAtom)),
+);
+export const sidebarAdsEnabledAtom = atom((get) =>
+	resolveSidebarAdsEnabled(get(siteNavAtom)),
+);
+export const homeAdsAutoplayIntervalAtom = atom((get) =>
+	resolveHomeAdsAutoplayInterval(get(siteNavAtom)),
+);
+export const sidebarAdsAutoplayIntervalAtom = atom((get) =>
+	resolveSidebarAdsAutoplayInterval(get(siteNavAtom)),
+);
+export const homeAdsVisibleCountAtom = atom((get) =>
+	resolveHomeAdsVisibleCount(get(siteNavAtom)),
+);
+export const homeAdsGapAtom = atom((get) =>
+	resolveHomeAdsGap(get(siteNavAtom).homeAdsGap),
+);
 export const showRecentVisitsAtom = atom(
 	(get) => get(siteNavAtom).showRecentVisits !== false,
 );
@@ -142,6 +189,10 @@ export const showSubcategoryTabsAtom = atom(
 
 export const showCategorySearchAtom = atom(
 	(get) => get(layoutAtom).showCategorySearch === true,
+);
+
+export const submissionConfigAtom = atom((get) =>
+	resolveSubmissionConfig(get(siteNavAtom).submission),
 );
 
 /** 启用的插件列表（按 sort 排序），供 layout 注入使用 */
@@ -163,3 +214,6 @@ export const navDrawerOpenAtom = atom(false);
 export const engineDrawerOpenAtom = atom(false);
 /** 当前选中的搜索引擎 id */
 export const engineIdAtom = atom<Key | null>(null);
+
+/** 投稿弹窗由侧栏入口和悬浮入口共同控制 */
+export const submissionDialogOpenAtom = atom(false);

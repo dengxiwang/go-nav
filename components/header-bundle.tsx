@@ -15,6 +15,7 @@ import {
 	navLogoAtom,
 	navNameAtom,
 	searchConfigAtom,
+	submissionConfigAtom,
 } from "@/lib/store/site";
 import { useJumpToSection } from "@/hooks/use-active-section";
 
@@ -102,8 +103,17 @@ function MobileNavDrawerContent({
 	onItemClick: (id: string) => void;
 }) {
 	const categories = useAtomValue(categoriesAtom);
+	const submission = useAtomValue(submissionConfigAtom);
 
-	return <CategorySidebar categories={categories} onItemClick={onItemClick} />;
+	return (
+		<CategorySidebar
+			categories={categories}
+			onItemClick={onItemClick}
+			showSubmissionAction={
+				submission.enabled && submission.showSidebarButton
+			}
+		/>
+	);
 }
 
 function SearchHeader({
