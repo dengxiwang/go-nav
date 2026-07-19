@@ -1,10 +1,14 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
-	buildSearchIndexEntry,
-	getLocalSearchScore,
-} from "./search-bar.utils";
+	useCallback,
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
+import type { PinyinSearchIndexEntry } from "@/lib/client/pinyin-search";
+import { getLocalSearchScore } from "./search-bar.utils";
 import type { SearchBarSite } from "./search-bar.types";
 
 export function useLocalSearch({
@@ -19,27 +23,61 @@ export function useLocalSearch({
 	sites: SearchBarSite[];
 }) {
 	const [searchIndexReady, setSearchIndexReady] = useState(false);
+	const [searchIndex, setSearchIndex] = useState<
+		Array<{ site: SearchBarSite } & PinyinSearchIndexEntry>
+	>([]);
 
 	useEffect(() => {
 		if (!isLocal || !query.trim()) return;
 		setSearchIndexReady(true);
 	}, [isLocal, query]);
 
-	const searchIndex = useMemo(() => {
+	useEffect(() => {
 		if (!enableLocal || !searchIndexReady) {
-			return [] as Array<{
-				site: SearchBarSite;
-				title: string;
-				titlePinyin: string;
-				titleInitials: string;
-				hay: string;
-			}>;
+			setSearchIndex([]);
+			return;
 		}
 
-		return sites.map((site) => ({
-			site,
-			...buildSearchIndexEntry(site),
-		}));
+		// 动态块还在下载时，普通文本搜索仍然可立即使用。
+		setSearchIndex(
+			sites.map((site) => {
+				const title = (site.title ?? "").toLowerCase();
+				return {
+					site,
+					title,
+					titlePinyin: "",
+					titleInitials: "",
+					hay: [
+						title,
+						site.description ?? "",
+						site.url ?? "",
+						site.tags?.join(" ") ?? "",
+						site.categoryName ?? "",
+					]
+						.join("\u0001")
+						.toLowerCase(),
+				};
+			}),
+		);
+
+		let cancelled = false;
+		void import("@/lib/client/pinyin-search")
+			.then(({ buildPinyinSearchIndexEntry }) => {
+				if (cancelled) return;
+				setSearchIndex(
+					sites.map((site) => ({
+						site,
+						...buildPinyinSearchIndexEntry(site),
+					})),
+				);
+			})
+			.catch(() => {
+				// 动态块加载失败时保留上面的普通文本索引。
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	}, [enableLocal, searchIndexReady, sites]);
 
 	const deferredQuery = useDeferredValue(query);
@@ -60,9 +98,15 @@ export function useLocalSearch({
 			.slice(0, 10)
 			.map((entry) => entry.site);
 	}, [deferredQuery, isLocal, searchIndex]);
+	const markSearchIndexReady = useCallback(
+		() => {
+			if (isLocal) setSearchIndexReady(true);
+		},
+		[isLocal],
+	);
 
 	return {
 		results,
-		markSearchIndexReady: () => setSearchIndexReady(true),
+		markSearchIndexReady,
 	};
 }

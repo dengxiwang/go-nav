@@ -10,7 +10,6 @@ import {
 	ListBox,
 	Select,
 	Spinner,
-	Switch,
 	Tabs,
 	TextField,
 	toast,
@@ -26,6 +25,7 @@ import {
 	BiXCircle,
 } from "react-icons/bi";
 import { navAtom } from "@/lib/store/admin";
+import { AdminSwitch } from "./admin-switch";
 
 type ImageHostMode = "local" | "webdav" | "github" | "s3" | "oss" | "multi";
 type ImageHostReturnUrlMode = "relative" | "absolute";
@@ -722,36 +722,56 @@ export function ImageHostEditor() {
 
 						<Card variant="secondary" className="gap-4">
 							<Card.Header>
-								<Card.Title>上传格式处理</Card.Title>
+								<Card.Title>上传图片处理</Card.Title>
 								<Card.Description>
-									控制图片上传时的统一转码策略。
+									控制图片上传时的压缩与统一转码策略。
 								</Card.Description>
 							</Card.Header>
-							<Card.Content className="flex flex-col gap-3">
-								<Switch
-									isSelected={nav.imageUpload?.convertToWebp === true}
-									onChange={(selected) =>
-										setNav({
-											...nav,
-											imageUpload: {
-												...(nav.imageUpload ?? {}),
-												convertToWebp: selected,
-											},
-										})
-									}
-								>
-									<Switch.Control>
-										<Switch.Thumb />
-									</Switch.Control>
-									<Switch.Content>
-										<Label className="text-sm">
+							<Card.Content className="flex flex-col gap-4">
+								<div className="flex flex-col gap-2">
+									<AdminSwitch
+										isSelected={nav.imageUpload?.compress === true}
+										onChange={(selected) =>
+											setNav({
+												...nav,
+												imageUpload: {
+													...(nav.imageUpload ?? {}),
+													compress: selected,
+												},
+											})
+										}
+									>
+										<span className="text-sm">上传时压缩图片</span>
+									</AdminSwitch>
+									<p className="text-xs text-default-500">
+										默认关闭。开启后会对图标、预览图和自动抓取的图片执行尺寸与体积优化；关闭时保留原始文件内容。
+									</p>
+								</div>
+								<div className="flex flex-col gap-2">
+									<AdminSwitch
+										isSelected={nav.imageUpload?.convertToWebp === true}
+										onChange={(selected) =>
+											setNav({
+												...nav,
+												imageUpload: {
+													...(nav.imageUpload ?? {}),
+													convertToWebp: selected,
+												},
+											})
+										}
+									>
+										<span className="text-sm">
 											上传时尽量统一转换成 WebP
-										</Label>
-									</Switch.Content>
-								</Switch>
+										</span>
+									</AdminSwitch>
+									<p className="text-xs text-default-500">
+										开启后，PNG / JPG / WebP / SVG 会优先转成 WebP
+										再保存；自动抓取 favicon
+										时也会遵守这个设置。即使关闭压缩，开启转码仍会重新编码对应图片。
+									</p>
+								</div>
 								<p className="text-xs text-default-500">
-									开启后，PNG / JPG / WebP / SVG 会优先转成 WebP 再保存；自动抓取
-									favicon 时也会遵守这个设置。这个开关属于站点全局配置，请点击顶部保存按钮生效。
+									以上开关属于站点全局配置，请点击顶部保存按钮生效。
 								</p>
 							</Card.Content>
 						</Card>
@@ -764,8 +784,10 @@ export function ImageHostEditor() {
 									MD5。若检测到相同文件，默认直接返回已存在路径，不重复上传。
 								</li>
 								<li className="mt-1">
-									图片格式和压缩采用固定智能策略：默认仅对可安全重编码的格式做压缩优化；若开启上面的
-									WebP 统一转换，SVG 等可转换格式也会按设置处理。
+									压缩默认关闭；压缩与 WebP 转换都关闭时，系统会保存原始图片内容，不做重新编码。
+								</li>
+								<li className="mt-1">
+									开启压缩后，仅对可安全重编码的图片执行智能优化；如果压缩收益很小，会继续保留原图。
 								</li>
 								<li className="mt-1">
 									在多图床策略下，如果某个图床缺失该文件，会自动补传缺失端，并继续复用同一路径。
@@ -1111,7 +1133,7 @@ export function ImageHostEditor() {
 									</p>
 								</Field>
 								<div className="md:col-span-2">
-									<Switch
+									<AdminSwitch
 										isSelected={draft.s3.forcePathStyle}
 										onChange={(forcePathStyle) =>
 											setDraft((prev) => ({
@@ -1120,17 +1142,14 @@ export function ImageHostEditor() {
 											}))
 										}
 									>
-										<Switch.Control>
-											<Switch.Thumb />
-										</Switch.Control>
-										<Switch.Content>
-											<Label className="text-sm">路径风格请求</Label>
+										<span className="flex flex-col items-start gap-1 text-left">
+											<span className="text-sm">路径风格请求</span>
 											<p className="text-xs text-default-500">
 												开启时上传到 endpoint/bucket/path；关闭时上传到
 												bucket.endpoint/path。
 											</p>
-										</Switch.Content>
-									</Switch>
+										</span>
+									</AdminSwitch>
 								</div>
 							</Card.Content>
 						</Card>

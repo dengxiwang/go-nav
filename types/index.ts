@@ -18,6 +18,12 @@ export type CardStyle = "compact" | "preview";
  */
 export interface ImageUploadConfig {
 	/**
+	 * 是否压缩可安全重编码的图片
+	 * - 默认关闭：保留上传文件的原始内容
+	 * - 开启后：图标、预览图与远程抓取图片会按场景缩放并优化体积
+	 */
+	compress?: boolean;
+	/**
 	 * 是否尽量统一转换成 WebP
 	 * - 开启后：手动上传、远程抓取 favicon 等场景会优先转为 webp
 	 * - 适用于 png / jpg / webp / svg
@@ -104,8 +110,64 @@ export interface AdConfig {
 	url: string;
 	/** 是否启用 */
 	enabled: boolean;
+	/** 广告所属位置；旧数据未配置时按旧版全局位置兼容，最终回退到侧边栏 */
+	placement?: AdDisplayPosition;
 	/** 排序权重（数字越小越靠前） */
 	sort?: number;
+}
+
+/** 广告区域展示位置 */
+export type AdDisplayPosition = "sidebar" | "home-top";
+
+/**
+ * 投稿收录配置。
+ *
+ * 部署模式不写入配置：server 构建自动使用本地审核流，static 构建自动使用邮件流。
+ */
+export interface SubmissionConfig {
+	/** 是否启用投稿收录功能 */
+	enabled?: boolean;
+	/** 是否在右下角展示独立悬浮入口 */
+	showFloatingButton?: boolean;
+	/** 是否在左侧分类列表底部展示入口 */
+	showSidebarButton?: boolean;
+	/** 静态部署接收投稿邮件的邮箱 */
+	staticEmail?: string;
+}
+
+/** 投稿审核状态 */
+export type SubmissionStatus = "pending" | "approved" | "rejected";
+
+/** 前台投稿表单数据 */
+export interface SubmissionInput {
+	title: string;
+	url: string;
+	/** 网站图标 URL、站内上传路径或 emoji */
+	icon?: string;
+	description?: string;
+	submitterName?: string;
+	contact?: string;
+	note?: string;
+	/** 机器人诱捕字段，正常用户应始终留空 */
+	company?: string;
+}
+
+/** 动态部署中保存到本地、供后台审核的投稿记录 */
+export interface SiteSubmission extends Omit<SubmissionInput, "company"> {
+	id: string;
+	status: SubmissionStatus;
+	createdAt: string;
+	updatedAt: string;
+	reviewedAt?: string;
+	reviewNote?: string;
+	targetCategoryId?: string;
+	targetCategoryName?: string;
+	publishedSite?: NavSite;
+}
+
+/** data/submissions.json 的数据结构 */
+export interface SubmissionData {
+	submissions: SiteSubmission[];
 }
 
 /**
@@ -266,9 +328,35 @@ export interface NavConfig {
 	};
 	/** 广告列表 */
 	ads: AdConfig[];
-	/** 全局广告宽高比（作用于整个广告位区域），如 "16/9"、"4/3"、"1/1"、"2/1"或自定义 "w/h"，默认 "16/9" */
+	/** 投稿收录入口、静态邮件等配置 */
+	submission?: SubmissionConfig;
+	/** @deprecated 旧版全局广告宽高比，仅用于兼容已有配置 */
 	adsAspectRatio?: string;
-	/** 是否显示广告区域 */
+	/** @deprecated 旧版全局广告位置，仅用于迁移未标记 placement 的广告 */
+	adsDisplayPosition?: AdDisplayPosition;
+	/** @deprecated 旧版全局同时展示数量，仅用于兼容已有配置 */
+	adsVisibleCount?: number;
+	/** 主页顶部单张广告图片比例，默认 16/9 */
+	homeAdsAspectRatio?: string;
+	/** 侧边栏单张广告图片比例，默认 4/3 */
+	sidebarAdsAspectRatio?: string;
+	/** 是否开启主页顶部广告，默认 true */
+	homeAdsEnabled?: boolean;
+	/** 是否开启侧边栏广告，默认 true */
+	sidebarAdsEnabled?: boolean;
+	/** @deprecated 旧版全局广告切换间隔，仅用于兼容已有配置 */
+	adsAutoplayInterval?: number;
+	/** 主页顶部广告自动切换间隔（毫秒），默认 5000 */
+	homeAdsAutoplayInterval?: number;
+	/** 侧边栏广告自动切换间隔（毫秒），默认 5000 */
+	sidebarAdsAutoplayInterval?: number;
+	/** 主页顶部 Swiper 同时展示的最大数量，正整数，默认 3 */
+	homeAdsVisibleCount?: number;
+	/** 主页顶部广告卡片间距（px），范围 0-48，默认 6 */
+	homeAdsGap?: number;
+	/** @deprecated 侧边栏固定单卡展示，仅保留旧配置兼容 */
+	sidebarAdsVisibleCount?: number;
+	/** @deprecated 旧版全局广告开关，仅用于兼容已有配置 */
 	showAds?: boolean;
 	/** 是否显示最近访问 */
 	showRecentVisits?: boolean;

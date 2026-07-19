@@ -95,6 +95,7 @@ export interface ImageHostConfigInput {
 
 export interface SaveImageAssetOptions extends SaveUploadOptions {
 	contentType?: string;
+	compress?: boolean;
 	forceWebp?: boolean;
 }
 
@@ -548,6 +549,7 @@ async function prepareImageAsset(
 	fileName: string,
 	bytes: Buffer,
 	contentType: string | undefined,
+	compress?: boolean,
 	forceWebp?: boolean,
 ): Promise<PreparedImageAsset> {
 	const sourceExt = inferSourceExtension(fileName, contentType);
@@ -555,8 +557,10 @@ async function prepareImageAsset(
 	const shouldConvertToWebp =
 		forceWebp === true &&
 		[".jpg", ".png", ".webp", ".svg"].includes(sourceExt);
-	// 固定智能策略：仅对可安全重编码的位图执行有损/无损压缩，其它格式保持原样。
-	if (!shouldConvertToWebp && ![".jpg", ".png", ".webp"].includes(sourceExt)) {
+	const shouldCompress =
+		compress === true && [".jpg", ".png", ".webp"].includes(sourceExt);
+	// 默认保留原文件；只有显式开启压缩或 WebP 转换时才重新编码。
+	if (!shouldConvertToWebp && !shouldCompress) {
 		return { bytes, ext: sourceExt, contentType: sourceMime };
 	}
 
@@ -1271,6 +1275,7 @@ export async function saveImageAsset(
 		fileName,
 		bytes,
 		options?.contentType,
+		options?.compress,
 		options?.forceWebp,
 	);
 	const preparedFileName = `${path.basename(

@@ -4,13 +4,13 @@ import path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { NavConfig, WebsiteData } from "@/types";
 import {
-	getStructuredFileFormat,
-	listStructuredDataFileCandidates,
-	resolveNavFilePathForRead,
-	resolveNavFilePathForWrite,
-	resolveWebsiteFilePathForRead,
-	resolveWebsiteFilePathForWrite,
-	UPLOADS_DIR,
+    getStructuredFileFormat,
+    listStructuredDataFileCandidates,
+    resolveNavFilePathForRead,
+    resolveNavFilePathForWrite,
+    resolveWebsiteFilePathForRead,
+    resolveWebsiteFilePathForWrite,
+    UPLOADS_DIR,
 } from "./paths";
 
 /**
@@ -91,8 +91,43 @@ export const DEFAULT_NAV: NavConfig = {
 			url: "https://www.rainyun.com/gotab_",
 			enabled: true,
 		},
+		{
+			id: "ad-1784451057682",
+			title: "云服务器首购优惠",
+			description: "云服务器、云数据库、COS、CDN、短信等云产品特惠热卖中",
+			image: "/uploads/home-ad-vjwbzt.png",
+			url: "https://www.rainyun.com/gotab_",
+			enabled: true,
+			placement: "home-top",
+		},
+		{
+			id: "ad-1784455424365",
+			title: "必应搜索积分兑换福利",
+			description:
+				"欢迎使用 Microsoft Rewards，你可以在其中赚取积分、兑换礼品卡等",
+			image: "/uploads/home-ad-h47yxm.png",
+			url: "https://rewards.bing.com/welcome?rh=F4889091&ref=rafsrchae",
+			enabled: true,
+			placement: "home-top",
+		},
+		{
+			id: "ad-1784455091300",
+			title: "领券中心",
+			description: "领取优惠券，购物更优惠！",
+			image: "/uploads/home-ad-5ulsl3.png",
+			url: "https://s.click.taobao.com/a0cbkBk",
+			enabled: true,
+			placement: "home-top",
+		},
 	],
+	submission: {
+		enabled: true,
+		showFloatingButton: true,
+		showSidebarButton: true,
+		staticEmail: "dengxiwang@aliyun.com",
+	},
 	imageUpload: {
+		compress: false,
 		convertToWebp: false,
 	},
 	plugins: [],
@@ -107,7 +142,15 @@ export const DEFAULT_NAV: NavConfig = {
 		autoUseIntranet: false,
 		enableSiteDetailPage: false,
 	},
-	adsAspectRatio: "4/3",
+	homeAdsAspectRatio: "16/9",
+	sidebarAdsAspectRatio: "4/3",
+	homeAdsEnabled: true,
+	sidebarAdsEnabled: true,
+	homeAdsAutoplayInterval: 5000,
+	sidebarAdsAutoplayInterval: 5000,
+	homeAdsVisibleCount: 3,
+	homeAdsGap: 6,
+	sidebarAdsVisibleCount: 1,
 };
 
 function isMissingFileError(e: unknown): boolean {
@@ -166,12 +209,18 @@ export function parseStructuredContent<T>(content: string): T {
 	return stripComments(parseYaml(content)) as T;
 }
 
-export function stringifyStructuredContent(value: unknown, file: string): string {
+export function stringifyStructuredContent(
+	value: unknown,
+	file: string,
+): string {
 	return stringifyStructuredFile(value, file);
 }
 
 export function readWebsiteData(): WebsiteData {
-	return readJsonOr<WebsiteData>(resolveWebsiteFilePathForRead(), DEFAULT_WEBSITE);
+	return readJsonOr<WebsiteData>(
+		resolveWebsiteFilePathForRead(),
+		DEFAULT_WEBSITE,
+	);
 }
 
 export function writeWebsiteData(v: WebsiteData) {
@@ -191,17 +240,21 @@ export function writeNav(v: NavConfig) {
 }
 
 export function getConfigRevision(): string {
-	const parts = [resolveWebsiteFilePathForRead(), resolveNavFilePathForRead()].map(
-		(file) => {
-			try {
-				const stat = fs.statSync(file);
-				return `${file}:${stat.mtimeMs}:${stat.size}`;
-			} catch {
-				return `${file}:missing`;
-			}
-		},
-	);
-	return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 16);
+	const parts = [
+		resolveWebsiteFilePathForRead(),
+		resolveNavFilePathForRead(),
+	].map((file) => {
+		try {
+			const stat = fs.statSync(file);
+			return `${file}:${stat.mtimeMs}:${stat.size}`;
+		} catch {
+			return `${file}:missing`;
+		}
+	});
+	return createHash("sha256")
+		.update(parts.join("|"))
+		.digest("hex")
+		.slice(0, 16);
 }
 
 /**
@@ -269,10 +322,14 @@ function createUploadBaseName(name: string): string {
 		.replace(/-{2,}/g, "-")
 		.slice(0, 28)
 		.replace(/-+$/g, "");
-	return slug || "icon";
+	return slug || "image";
 }
 
-function saveUploadWithRandomSuffix(base: string, ext: string, bytes: Buffer): string {
+function saveUploadWithRandomSuffix(
+	base: string,
+	ext: string,
+	bytes: Buffer,
+): string {
 	let unique = "";
 	do {
 		unique = `${base}-${Math.random().toString(36).slice(2, 8)}${ext}`;
@@ -332,8 +389,7 @@ function findExistingUploadByHash(
 			if (!entry.isFile()) continue;
 			const name = entry.name;
 			if (path.extname(name).toLowerCase() !== ext) continue;
-			const isTargetBase =
-				name === `${base}${ext}` || name.startsWith(prefix);
+			const isTargetBase = name === `${base}${ext}` || name.startsWith(prefix);
 			if (!isTargetBase) continue;
 			const filePath = path.join(UPLOADS_DIR, name);
 			if (hasUploadWithHash(filePath, expectedHash)) {

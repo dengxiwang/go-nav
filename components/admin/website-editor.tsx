@@ -1,21 +1,23 @@
 "use client";
 
 import {
-	Button,
-	Input,
-	Label,
-	Separator,
-	Switch,
-	TextField,
+    Button,
+    Input,
+    Label,
+    Separator,
+    TextField,
 } from "@heroui/react";
 import { BiSun, BiMoon, BiDesktop } from "react-icons/bi";
 import type { CardStyle, LayoutConfig, ThemeMode, NavConfig } from "@/types";
-import { useAtom } from "jotai";
-import { navAtom } from "@/lib/store/admin";
+import { useAtom, useSetAtom } from "jotai";
+import { navAtom, navFieldAtom } from "@/lib/store/admin";
 import { DEFAULT_LAYOUT } from "@/lib/store/site";
 import { IconPicker } from "./icon-picker";
+import { AdminSwitch } from "./admin-switch";
 
 export type WebsiteSection = "basic" | "layout" | "theme" | "footer";
+
+const DEFAULT_RECENT_VISITS_MAX = 10;
 
 export function WebsiteEditor({
 	section = "basic",
@@ -23,6 +25,9 @@ export function WebsiteEditor({
 	section?: WebsiteSection;
 }) {
 	const [value, setValue] = useAtom(navAtom);
+	const setLayout = useSetAtom(navFieldAtom("layout"));
+	const setShowRecentVisits = useSetAtom(navFieldAtom("showRecentVisits"));
+	const setRecentVisitsMax = useSetAtom(navFieldAtom("recentVisitsMax"));
 	const patch = (p: Partial<NavConfig>) => {
 		setValue({ ...value, ...p });
 	};
@@ -31,7 +36,11 @@ export function WebsiteEditor({
 		return (
 			<LayoutEditor
 				layout={value.layout}
-				onChange={(l) => patch({ layout: l })}
+				onChange={setLayout}
+				showRecentVisits={value.showRecentVisits}
+				onShowRecentVisitsChange={setShowRecentVisits}
+				recentVisitsMax={value.recentVisitsMax}
+				onRecentVisitsMaxChange={setRecentVisitsMax}
 			/>
 		);
 	}
@@ -106,13 +115,18 @@ function BasicEditor({
 
 			<div className="flex flex-col gap-2">
 				<Label className="text-sm font-medium">Logo</Label>
-				<IconPicker value={value.logo} onChange={(v) => onPatch({ logo: v })} />
+				<IconPicker
+					value={value.logo}
+					uploadPrefix="logo"
+					onChange={(v) => onPatch({ logo: v })}
+				/>
 			</div>
 
 			<div className="flex flex-col gap-2">
 				<Label className="text-sm font-medium">Favicon</Label>
 				<IconPicker
 					value={value.favicon}
+					uploadPrefix="favicon"
 					onChange={(v) => onPatch({ favicon: v })}
 				/>
 			</div>
@@ -315,6 +329,7 @@ function FooterEditor({
 				<Label className="text-sm font-medium">公众号二维码</Label>
 				<IconPicker
 					value={value.qrCode}
+					uploadPrefix="qr-code"
 					onChange={(v) => onPatch({ qrCode: v })}
 				/>
 			</div>
@@ -401,9 +416,17 @@ function FooterEditor({
 function LayoutEditor({
 	layout,
 	onChange,
+	showRecentVisits,
+	onShowRecentVisitsChange,
+	recentVisitsMax,
+	onRecentVisitsMaxChange,
 }: {
 	layout?: LayoutConfig;
 	onChange: (v: LayoutConfig) => void;
+	showRecentVisits?: boolean;
+	onShowRecentVisitsChange: (value: boolean) => void;
+	recentVisitsMax?: number;
+	onRecentVisitsMaxChange: (value: number | undefined) => void;
 }) {
 	const l = layout ?? {};
 	const patch = (p: Partial<LayoutConfig>) => onChange({ ...l, ...p });
@@ -450,11 +473,16 @@ function LayoutEditor({
 		patch(next);
 	};
 
-	const displayToggleItems: {
+	type ToggleItem = {
 		label: string;
-		key: keyof LayoutConfig;
 		disabled?: boolean;
-	}[] = [
+	} &
+		(
+			| { kind?: "layout"; key: keyof LayoutConfig }
+			| { kind: "recentVisits"; key: "showRecentVisits" }
+		);
+
+	const displayToggleItems: ToggleItem[] = [
 		{ label: "显示左侧侧边栏（桌面端）", key: "showSidebar" },
 		{ label: "显示搜索栏", key: "showSearch" },
 		{ label: "分类导航栏搜索", key: "showCategorySearch" },
@@ -480,13 +508,14 @@ function LayoutEditor({
 			key: "showFloatingQrCode",
 			disabled: !getLayoutValue("showFloatingActions"),
 		},
+		{
+			kind: "recentVisits",
+			label: "显示最近访问",
+			key: "showRecentVisits",
+		},
 	];
 
-	const behaviorToggleItems: {
-		label: string;
-		key: keyof LayoutConfig;
-		disabled?: boolean;
-	}[] = [
+	const behaviorToggleItems: ToggleItem[] = [
 		{
 			label: "新标签页打开链接",
 			key: "linkTarget",
@@ -566,25 +595,29 @@ function LayoutEditor({
 	];
 
 	const renderToggleGroup = (
-		items: { label: string; key: keyof LayoutConfig; disabled?: boolean }[],
+		items: ToggleItem[],
 	) => (
 		<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 			{items.map((item) => {
-				const cur = getToggleValue(item.key);
+				const isRecentVisits = item.kind === "recentVisits";
+				const cur = isRecentVisits
+					? showRecentVisits !== false
+					: getToggleValue(item.key);
 				return (
-					<Switch
+					<AdminSwitch
 						key={item.key}
 						isSelected={cur}
 						isDisabled={item.disabled}
-						onChange={(v) => patchToggle(item.key, v)}
+						onChange={(value) => {
+							if (isRecentVisits) {
+								onShowRecentVisitsChange(value);
+								return;
+							}
+							patchToggle(item.key, value);
+						}}
 					>
-						<Switch.Control>
-							<Switch.Thumb />
-						</Switch.Control>
-						<Switch.Content>
-							<Label className="text-sm">{item.label}</Label>
-						</Switch.Content>
-					</Switch>
+						<span className="text-sm">{item.label}</span>
+					</AdminSwitch>
 				);
 			})}
 		</div>
@@ -643,6 +676,36 @@ function LayoutEditor({
 					显示项
 				</h4>
 				{renderToggleGroup(displayToggleItems)}
+
+				<div className="flex flex-wrap items-center gap-3">
+					<span className="text-sm">最近访问最大条数</span>
+					<TextField
+						className="w-28"
+						value={
+							recentVisitsMax === undefined ? "" : String(recentVisitsMax)
+						}
+						onChange={(value) => {
+							const digits = value.replace(/\D/g, "");
+							if (!digits) {
+								onRecentVisitsMaxChange(undefined);
+								return;
+							}
+							const parsed = Number.parseInt(digits, 10);
+							onRecentVisitsMaxChange(
+								Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+							);
+						}}
+					>
+						<Label className="sr-only">recentVisitsMax</Label>
+						<Input
+							inputMode="numeric"
+							placeholder={String(DEFAULT_RECENT_VISITS_MAX)}
+						/>
+					</TextField>
+					<span className="text-xs text-default-500">
+						留空或 0 使用默认值 {DEFAULT_RECENT_VISITS_MAX}
+					</span>
+				</div>
 			</div>
 
 			<Separator />

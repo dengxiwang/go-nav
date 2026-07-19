@@ -1,6 +1,5 @@
 "use client";
 
-import { pinyin } from "pinyin-pro";
 import type { SearchEngine } from "@/types";
 
 export const DROPDOWN_MAX_HEIGHT = "min(20rem, calc(100dvh - 6rem))";
@@ -29,51 +28,6 @@ export function resolveDefaultEngineId(
 	return engineOptions.some((engine) => engine.id === defaultEngine)
 		? defaultEngine
 		: (engineOptions[0]?.id ?? null);
-}
-
-function getPinyinText(text: string) {
-	return pinyin(text, { toneType: "none", type: "array" }).join("");
-}
-
-function getPinyinInitials(text: string) {
-	return pinyin(text, { toneType: "none", type: "array" })
-		.map((item) => item.charAt(0))
-		.join("");
-}
-
-export function buildSearchIndexEntry(
-	site: {
-		title?: string;
-		description?: string;
-		url?: string;
-		tags?: string[];
-		categoryName?: string;
-	},
-) {
-	const title = (site.title ?? "").toLowerCase();
-	const titlePinyin = getPinyinText(title).toLowerCase();
-	const titleInitials = getPinyinInitials(title).toLowerCase();
-
-	return {
-		title,
-		titlePinyin,
-		titleInitials,
-		hay: (
-			title +
-			"\u0001" +
-			titlePinyin +
-			"\u0001" +
-			titleInitials +
-			"\u0001" +
-			(site.description ?? "") +
-			"\u0001" +
-			(site.url ?? "") +
-			"\u0001" +
-			(site.tags ? site.tags.join(" ") : "") +
-			"\u0001" +
-			(site.categoryName ?? "")
-		).toLowerCase(),
-	};
 }
 
 export function getLocalSearchScore(

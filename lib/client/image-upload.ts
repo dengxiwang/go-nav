@@ -11,7 +11,9 @@ export interface UploadImageOptions {
 	maxEdge: number;
 	quality: number;
 	minCompressBytes?: number;
+	compress?: boolean;
 	forceWebp?: boolean;
+	fileNamePrefix?: string;
 }
 
 function buildWebpName(fileName: string) {
@@ -25,6 +27,7 @@ async function compressImageIfNeeded(
 	options: UploadImageOptions,
 ): Promise<File> {
 	if (typeof window === "undefined") return file;
+	if (!options.compress && !options.forceWebp) return file;
 	if (!COMPRESSIBLE_TYPES.has(file.type)) return file;
 	if (
 		!options.forceWebp &&
@@ -66,11 +69,32 @@ async function compressImageIfNeeded(
 	}
 }
 
+function applyFileNamePrefix(file: File, prefix: string | undefined): File {
+	const normalized = (prefix ?? "")
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.slice(0, 28);
+	if (!normalized) return file;
+
+	const dot = file.name.lastIndexOf(".");
+	const rawExtension = dot > 0 ? file.name.slice(dot).toLowerCase() : "";
+	const extension = /^\.[a-z0-9]+$/.test(rawExtension) ? rawExtension : "";
+	return new File([file], `${normalized}${extension}`, {
+		type: file.type,
+		lastModified: file.lastModified,
+	});
+}
+
 export async function uploadImageWithCompression(
 	file: File,
 	options: UploadImageOptions,
 ): Promise<string> {
-	const prepared = await compressImageIfNeeded(file, options);
+	const prepared = applyFileNamePrefix(
+		await compressImageIfNeeded(file, options),
+		options.fileNamePrefix,
+	);
 	const form = new FormData();
 	form.append("file", prepared);
 

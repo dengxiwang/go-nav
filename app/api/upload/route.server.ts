@@ -64,10 +64,11 @@ export async function POST(req: Request) {
 			);
 		}
 		const bytes = Buffer.from(await file.arrayBuffer());
-		const convertToWebp = readNav().imageUpload?.convertToWebp === true;
+		const imageUpload = readNav().imageUpload;
 		const url = await saveImageAsset(originalName, bytes, {
 			contentType: file.type,
-			forceWebp: convertToWebp,
+			compress: imageUpload?.compress === true,
+			forceWebp: imageUpload?.convertToWebp === true,
 		});
 		return NextResponse.json({ url });
 	} catch (e) {

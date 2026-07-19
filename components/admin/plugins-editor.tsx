@@ -9,7 +9,6 @@ import {
 	ListBox,
 	Modal,
 	Select,
-	Switch,
 	Table,
 	TextField,
 } from "@heroui/react";
@@ -27,6 +26,7 @@ import {
 } from "react-icons/bi";
 import { pluginAtomFamily, pluginsAtom } from "@/lib/store/admin";
 import type { PluginConfig } from "@/types";
+import { AdminSwitch } from "./admin-switch";
 
 type EditingState =
 	| { mode: "create"; draft: PluginConfig }
@@ -547,15 +547,11 @@ function PluginRow({
 	return (
 		<Table.Row key={plugin.id} id={plugin.id}>
 			<Table.Cell>
-				<Switch
+				<AdminSwitch
 					isSelected={plugin.enabled}
 					onChange={(selected) => patchPlugin({ enabled: selected })}
-					aria-label="启用"
-				>
-					<Switch.Control>
-						<Switch.Thumb />
-					</Switch.Control>
-				</Switch>
+					ariaLabel="启用"
+				/>
 			</Table.Cell>
 			<Table.Cell className="max-w-[18rem]">
 				<div className="flex min-w-0 items-center gap-2">
@@ -934,19 +930,14 @@ function PluginForm({
 
 			<div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-neutral-800">
 				<Label className="text-sm font-medium">启用此插件</Label>
-				<Switch
+				<AdminSwitch
 					isSelected={value.enabled}
 					onChange={(selected) => patch({ enabled: selected })}
 				>
-					<Switch.Control>
-						<Switch.Thumb />
-					</Switch.Control>
-					<Switch.Content>
-						<Label className="text-sm">
-							{value.enabled ? "已启用" : "已停用"}
-						</Label>
-					</Switch.Content>
-				</Switch>
+					<span className="text-sm">
+						{value.enabled ? "已启用" : "已停用"}
+					</span>
+				</AdminSwitch>
 			</div>
 		</div>
 	);

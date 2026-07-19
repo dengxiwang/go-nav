@@ -1,0 +1,6 @@
+{
+    "upgrade": false,
+    "reject": [
+        "typescript"
+    ]
+}

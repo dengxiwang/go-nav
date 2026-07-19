@@ -513,7 +513,9 @@ function PreviewImagePicker({
 			const url = await uploadImageWithCompression(f, {
 				maxEdge: 1600,
 				quality: 0.84,
+				compress: nav.imageUpload?.compress === true,
 				forceWebp: nav.imageUpload?.convertToWebp === true,
+				fileNamePrefix: "preview",
 			});
 			onChange(url);
 		} catch (e) {

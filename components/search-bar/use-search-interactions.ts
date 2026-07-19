@@ -97,6 +97,15 @@ export function useSearchInteractions({
 			const isSearchArea = inputWrapRef.current?.contains(activeElement) ?? false;
 			if (isSearchArea || !enableTabFocus) return;
 
+			// 仅在页面没有交互焦点时，把 Tab 作为“快速聚焦搜索框”。
+			// 表单、弹窗、链接或按钮已获得焦点时必须保留浏览器原生 Tab 顺序。
+			if (
+				activeElement !== document.body &&
+				activeElement !== document.documentElement
+			) {
+				return;
+			}
+
 			event.preventDefault();
 			event.stopImmediatePropagation();
 			onActivateSearchIndex();

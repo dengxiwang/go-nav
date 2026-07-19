@@ -8,6 +8,7 @@ import {
 	readResponseBytes,
 } from "@/lib/server/fetch-utils";
 import { saveImageAsset } from "@/lib/server/image-hosting";
+import { readNav } from "@/lib/server/store";
 
 const MAX_PREVIEW_SIZE = 8 * 1024 * 1024;
 const REQUEST_TIMEOUT = 35_000;
@@ -117,23 +118,32 @@ export async function POST(req: Request) {
 
 		const targetUrl = await normalizeTargetUrl(body.url);
 		const candidates = buildScreenshotSources(targetUrl);
+		const imageUpload = readNav().imageUpload;
 		let lastError = "截图失败";
 
 		for (const source of candidates) {
 			try {
 				const { bytes, contentType } = await tryFetchImage(source);
-				const compressed = await compressPreviewImage(bytes, contentType);
+				const prepared =
+					imageUpload?.compress === true
+						? await compressPreviewImage(bytes, contentType)
+						: { bytes, ext: contentTypeToExt(contentType) };
 				const host = new URL(targetUrl).hostname.replace(/[^a-z0-9.-]/gi, "-");
-				if (compressed.bytes.length > MAX_PREVIEW_SIZE) {
-					throw new Error("压缩后截图仍过大");
+				if (prepared.bytes.length > MAX_PREVIEW_SIZE) {
+					throw new Error("截图文件过大");
 				}
 				const url = await saveImageAsset(
-					`preview-${host}${compressed.ext}`,
-					compressed.bytes,
+					`preview-${host}${prepared.ext}`,
+					prepared.bytes,
 					{
 						dedupeByContent: true,
 						preferredExistingUrl: body.existingPreviewUrl,
-						contentType: contentTypeFromExt(compressed.ext),
+						contentType: contentTypeFromExt(prepared.ext),
+						// 截图压缩已在上方完成，避免服务端再次有损编码。
+						compress: false,
+						forceWebp:
+							imageUpload?.compress !== true &&
+							imageUpload?.convertToWebp === true,
 					},
 				);
 				return NextResponse.json({ url });
@@ -156,5 +166,6 @@ function contentTypeFromExt(ext: string): string {
 	if (ext === ".png") return "image/png";
 	if (ext === ".gif") return "image/gif";
 	if (ext === ".webp") return "image/webp";
+	if (ext === ".avif") return "image/avif";
 	return "image/jpeg";
 }

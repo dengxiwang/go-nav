@@ -1,12 +1,11 @@
-import { connection } from "next/server";
+/**
+ * 首页内容由 (site)/layout 中的 SiteShell 输出。
+ *
+ * 保持静态渲染，后台保存配置后会通过 revalidatePath("/") 精确失效：
+ * 这样既能及时更新数据，也避免每次访问都重复读文件和 SSR。
+ */
+export const dynamic = "force-static";
 
-const BUILD_MODE = (process.env.BUILD_MODE || "server").toLowerCase();
-const IS_STATIC_BUILD = BUILD_MODE === "static";
-
-export default async function HomePage() {
-	if (!IS_STATIC_BUILD) {
-		// 仅 server 模式按请求渲染；static 构建保持可导出。
-		await connection();
-	}
+export default function HomePage() {
 	return null;
 }

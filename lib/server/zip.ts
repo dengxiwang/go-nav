@@ -13,6 +13,12 @@ export interface ZipEntry {
 	data: Buffer;
 }
 
+export interface ParseZipOptions {
+	maxEntries?: number;
+	maxEntryUncompressedBytes?: number;
+	maxTotalUncompressedBytes?: number;
+}
+
 const CRC_TABLE = (() => {
 	const t = new Uint32Array(256);
 	for (let i = 0; i < 256; i++) {
@@ -126,7 +132,17 @@ export function createZip(entries: ZipEntry[]): Buffer {
 }
 
 /** 解析 ZIP 二进制内容，返回所有文件。 */
-export function parseZip(buf: Buffer): ZipEntry[] {
+export function parseZip(
+	buf: Buffer,
+	options: ParseZipOptions = {},
+): ZipEntry[] {
+	const maxEntries = options.maxEntries ?? Number.POSITIVE_INFINITY;
+	const maxEntryBytes =
+		options.maxEntryUncompressedBytes ?? Number.POSITIVE_INFINITY;
+	const maxTotalBytes =
+		options.maxTotalUncompressedBytes ?? Number.POSITIVE_INFINITY;
+	if (buf.length < 22) throw new Error("不是有效的 ZIP 文件");
+
 	let eocdOffset = -1;
 	const minStart = Math.max(0, buf.length - 22 - 65535);
 	for (let i = buf.length - 22; i >= minStart; i--) {
@@ -141,30 +157,58 @@ export function parseZip(buf: Buffer): ZipEntry[] {
 
 	const totalEntries = buf.readUInt16LE(eocdOffset + 10);
 	const cdOffset = buf.readUInt32LE(eocdOffset + 16);
+	if (totalEntries > maxEntries) {
+		throw new Error(`ZIP 文件数量不能超过 ${maxEntries}`);
+	}
+	if (cdOffset > eocdOffset) throw new Error("ZIP 中央目录位置无效");
 
 	const entries: ZipEntry[] = [];
+	let totalUncompressedBytes = 0;
 	let p = cdOffset;
 	for (let i = 0; i < totalEntries; i++) {
+		if (p < 0 || p + 46 > buf.length) {
+			throw new Error("ZIP 中央目录已损坏");
+		}
 		if (buf.readUInt32LE(p) !== 0x02014b50) {
 			throw new Error("ZIP 中央目录签名错误");
 		}
 		const method = buf.readUInt16LE(p + 10);
+		const expectedCrc = buf.readUInt32LE(p + 16);
 		const compressedSize = buf.readUInt32LE(p + 20);
+		const uncompressedSize = buf.readUInt32LE(p + 24);
 		const nameLen = buf.readUInt16LE(p + 28);
 		const extraLen = buf.readUInt16LE(p + 30);
 		const commentLen = buf.readUInt16LE(p + 32);
 		const lfhOffset = buf.readUInt32LE(p + 42);
+		const nextEntryOffset = p + 46 + nameLen + extraLen + commentLen;
+		if (nextEntryOffset > buf.length) {
+			throw new Error("ZIP 中央目录条目已损坏");
+		}
 		const name = buf
 			.subarray(p + 46, p + 46 + nameLen)
 			.toString("utf8");
-		p += 46 + nameLen + extraLen + commentLen;
+		p = nextEntryOffset;
 
+		if (uncompressedSize > maxEntryBytes) {
+			throw new Error("ZIP 中的单个文件解压后过大");
+		}
+		totalUncompressedBytes += uncompressedSize;
+		if (totalUncompressedBytes > maxTotalBytes) {
+			throw new Error("ZIP 解压后的总大小超出限制");
+		}
+
+		if (lfhOffset + 30 > buf.length) {
+			throw new Error("ZIP 本地文件头位置无效");
+		}
 		if (buf.readUInt32LE(lfhOffset) !== 0x04034b50) {
 			throw new Error("ZIP 本地文件头签名错误");
 		}
 		const lfhNameLen = buf.readUInt16LE(lfhOffset + 26);
 		const lfhExtraLen = buf.readUInt16LE(lfhOffset + 28);
 		const dataStart = lfhOffset + 30 + lfhNameLen + lfhExtraLen;
+		if (dataStart > buf.length || dataStart + compressedSize > buf.length) {
+			throw new Error("ZIP 文件内容已截断");
+		}
 		const compressedData = buf.subarray(
 			dataStart,
 			dataStart + compressedSize,
@@ -174,11 +218,22 @@ export function parseZip(buf: Buffer): ZipEntry[] {
 
 		let data: Buffer;
 		if (method === 0) {
+			if (compressedSize !== uncompressedSize) {
+				throw new Error("ZIP 未压缩条目的大小无效");
+			}
 			data = Buffer.from(compressedData);
 		} else if (method === 8) {
-			data = inflateRawSync(compressedData);
+			data = inflateRawSync(compressedData, {
+				maxOutputLength: Math.max(1, uncompressedSize),
+			});
 		} else {
 			throw new Error(`不支持的 ZIP 压缩方法: ${method}`);
+		}
+		if (data.length !== uncompressedSize) {
+			throw new Error("ZIP 条目解压后的大小不一致");
+		}
+		if (crc32(data) !== expectedCrc) {
+			throw new Error("ZIP 条目校验失败，文件可能已损坏");
 		}
 		entries.push({ name, data });
 	}

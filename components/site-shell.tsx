@@ -17,11 +17,15 @@ export function SiteShell() {
 	const footerPlugins = plugins.filter(
 		(p) => p.type === "js" || p.type === "external-script",
 	);
+	const deploymentMode =
+		(process.env.BUILD_MODE || "server").toLowerCase() === "static"
+			? "static"
+			: "server";
 
 	return (
 		<SiteStoreProvider initial={{ websiteData, nav }}>
 			<SiteHeadInsertions plugins={headPlugins} />
-			<AppLayout />
+			<AppLayout deploymentMode={deploymentMode} />
 			{footerPlugins.map((p) => (
 				<PluginScript key={p.id} plugin={p} />
 			))}

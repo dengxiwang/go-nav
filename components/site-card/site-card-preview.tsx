@@ -3,13 +3,14 @@
 import {
 	CARD_TRANSITION_CLASS,
 	FOCUS_RING_CLASS,
+	PREVIEW_CARD_SURFACE_CLASS,
 	SHARED_SPRING_EASE_CLASS,
 } from "../ui/ui.constants";
 import { SiteCardLinkShell } from "./site-card-link-shell";
 import type { SiteCardVisualProps } from "./site-card.types";
 
 const PREVIEW_CARD_CLASS =
-	`group relative flex h-full transform-gpu flex-col gap-3 overflow-hidden rounded-2xl border border-black/10 bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${CARD_TRANSITION_CLASS} duration-300 ${SHARED_SPRING_EASE_CLASS} ${FOCUS_RING_CLASS} dark:border-white/10 dark:bg-zinc-900 [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-black/15 [@media(hover:hover)]:hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] active:translate-y-0 active:scale-[0.99] dark:[@media(hover:hover)]:hover:border-white/20`;
+	`group relative flex h-full transform-gpu flex-col gap-3 overflow-hidden text-left ${PREVIEW_CARD_SURFACE_CLASS} ${CARD_TRANSITION_CLASS} duration-300 ${SHARED_SPRING_EASE_CLASS} ${FOCUS_RING_CLASS} [@media(hover:hover)]:hover:-translate-y-1 [@media(hover:hover)]:hover:border-black/15 [@media(hover:hover)]:hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] active:translate-y-0 active:scale-[0.99] dark:[@media(hover:hover)]:hover:border-white/20`;
 
 export function PreviewSiteCard({
 	site,

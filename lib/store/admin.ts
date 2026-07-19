@@ -41,6 +41,7 @@ const EMPTY_NAV: NavConfig = {
 	},
 	ads: [],
 	imageUpload: {
+		compress: false,
 		convertToWebp: false,
 	},
 };
@@ -289,7 +290,15 @@ export const applyImportAtom = atom(
 
 export const syncDataWithoutDirtyAtom = atom(
 	null,
-	(_get, set, payload: { websiteData?: WebsiteData; nav?: NavConfig }) => {
+	(
+		_get,
+		set,
+		payload: {
+			websiteData?: WebsiteData;
+			nav?: NavConfig;
+			revision?: string;
+		},
+	) => {
 		if (payload.websiteData) {
 			set(_websiteDataBaseAtom, payload.websiteData);
 			set(_savedWebsiteDataAtom, payload.websiteData);
@@ -298,5 +307,6 @@ export const syncDataWithoutDirtyAtom = atom(
 			set(_navBaseAtom, payload.nav);
 			set(_savedNavAtom, payload.nav);
 		}
+		if (payload.revision) set(configRevisionAtom, payload.revision);
 	},
 );
