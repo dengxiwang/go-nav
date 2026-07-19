@@ -11,9 +11,9 @@ interface SiteDetailRouteProps {
 
 const STATIC_PLACEHOLDER_SLUG = "__placeholder__";
 
-export function generateStaticParams() {
-	const nav = getNav();
-	const websiteData = getWebsiteData();
+export async function generateStaticParams() {
+	const nav = await getNav();
+	const websiteData = await getWebsiteData();
 	const entries = collectSiteDetailEntries(websiteData.categories);
 
 	// Next.js static export requires at least one prerendered param for dynamic routes.
@@ -29,13 +29,13 @@ export function generateStaticParams() {
 
 export default async function SiteDetailRoute(props: SiteDetailRouteProps) {
 	const { slug } = await props.params;
-	const nav = getNav();
+	const nav = await getNav();
 	const detailEnabled = nav.layout?.enableSiteDetailPage === true;
 	if (!detailEnabled || slug === STATIC_PLACEHOLDER_SLUG) {
 		notFound();
 	}
 
-	const websiteData = getWebsiteData();
+	const websiteData = await getWebsiteData();
 	const entries = collectSiteDetailEntries(websiteData.categories);
 	const matched = findSiteDetailEntryBySlug(entries, slug);
 	if (!matched) notFound();

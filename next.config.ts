@@ -9,9 +9,10 @@ import type { NextConfig } from "next";
  */
 const BUILD_MODE = (process.env.BUILD_MODE || "server").toLowerCase();
 const isStatic = BUILD_MODE === "static";
+const isCloudflare = BUILD_MODE === "cloudflare" || process.env.STORAGE_DRIVER === "cloudflare";
 
 // 仅在 server 模式下把 .server.tsx / .server.ts 纳入页面/路由扩展名集合
-const pageExtensions = isStatic
+const pageExtensions = (isStatic || isCloudflare)
 	? ["js", "jsx", "md", "mdx", "ts", "tsx"]
 	: ["js", "jsx", "md", "mdx", "ts", "tsx", "server.ts", "server.tsx"];
 
@@ -19,7 +20,9 @@ const nextConfig: NextConfig = {
 	// 静态模式开启 export，生成 out/；动态模式生成 standalone，便于 Docker 部署
 	...(isStatic
 		? { output: "export" as const }
-		: { output: "standalone" as const }),
+		: isCloudflare
+			? {} // cloudflare 模式下不设 output，由 @opennextjs/cloudflare 处理
+			: { output: "standalone" as const }),
 	trailingSlash: true,
 	reactCompiler: true,
 	productionBrowserSourceMaps: false,

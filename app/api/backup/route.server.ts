@@ -11,7 +11,7 @@ import {
 async function requireAuth(): Promise<boolean> {
 	const store = await cookies();
 	const token = store.get(SESSION_COOKIE)?.value;
-	return !!verifySession(token);
+	return !!await verifySession(token);
 }
 
 /**
@@ -25,7 +25,7 @@ export async function GET() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		const zipBuf = createDataBackupZip();
+		const zipBuf = await createDataBackupZip();
 		// Buffer 是 Uint8Array 的子类，可直接作为 Response Body
 		return new NextResponse(new Uint8Array(zipBuf), {
 			status: 200,
@@ -64,8 +64,8 @@ export async function POST(req: Request) {
 	}
 
 	try {
-		const restored = restoreDataBackupZip(buf);
-		revalidateFrontendPaths();
+		const restored = await restoreDataBackupZip(buf);
+		await revalidateFrontendPaths();
 		return NextResponse.json({
 			ok: true,
 			restored,

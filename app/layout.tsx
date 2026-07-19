@@ -9,8 +9,8 @@ export const viewport: Viewport = {
 	initialScale: 1,
 };
 
-export function generateMetadata(): Metadata {
-	const nav = getNav();
+export async function generateMetadata(): Promise<Metadata> {
+	const nav = await getNav();
 	const other: Metadata["other"] = {};
 	if (nav.copyright) {
 		other.copyright = nav.copyright;
@@ -54,12 +54,12 @@ function getScrollRestorationScript() {
 })()`;
 }
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const nav = getNav();
+	const nav = await getNav();
 	const themeMode = nav.themeMode ?? "light";
 	return (
 		<html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>

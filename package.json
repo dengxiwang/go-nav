@@ -16,7 +16,10 @@
     "docker:logs": "docker compose logs -f",
     "docker:down": "docker compose down",
     "docker:run": "docker run --rm -p 3000:3000 -e ADMIN_USER=admin -e ADMIN_PASS=admin123 -v \"$PWD/go-nav-data:/app/data\" go-nav:latest",
-    "docker:push": "sh scripts/docker-push.sh"
+    "docker:push": "sh scripts/docker-push.sh",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "dev:cloudflare": "wrangler pages dev .open-next --compatibility-date=2025-01-01",
+    "deploy:cloudflare": "wrangler pages deploy .open-next"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",
@@ -48,6 +51,7 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^25",
     "@types/react": "^19",
@@ -56,6 +60,7 @@
     "eslint": "^10",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^6"
+    "typescript": "^6",
+    "wrangler": "^4.0.0"
   }
 }

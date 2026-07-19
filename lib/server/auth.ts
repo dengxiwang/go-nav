@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "./paths";
+import { getConfigStore, getStorageDriverName } from "./storage/driver";
 
 /** 登录 cookie 名称 */
 export const SESSION_COOKIE = "nav_session";
@@ -39,8 +40,21 @@ function createPersistentSecret(secretFile: string): string {
 	return secret;
 }
 
-function getSecret(): string {
+async function getSecretAsync(): Promise<string> {
 	if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+
+	if (getStorageDriverName() === "cloudflare") {
+		// Cloudflare 下通过 ConfigStore 存取 session secret
+		const store = getConfigStore();
+		const existing = await store.read(".session-secret");
+		if (existing && existing.trim().length >= 32) return existing.trim();
+		// 首次启动，自动生成并保存
+		const secret = crypto.randomBytes(32).toString("hex");
+		await store.write(".session-secret", secret);
+		return secret;
+	}
+
+	// fs driver：使用文件系统
 	if (fileSecret !== undefined) return fileSecret ?? createPersistentSecret(path.join(DATA_DIR, ".session-secret"));
 	const secretFile = path.join(DATA_DIR, ".session-secret");
 	const secret = readFileSecret(secretFile) ?? createPersistentSecret(secretFile);
@@ -61,28 +75,29 @@ function fromBase64Url(s: string): Buffer {
 	return Buffer.from(s.replace(/-/g, "+").replace(/_/g, "/") + pad, "base64");
 }
 
-function hmac(data: string): string {
-	return toBase64Url(crypto.createHmac("sha256", getSecret()).update(data).digest());
+async function hmacAsync(data: string): Promise<string> {
+	const secret = await getSecretAsync();
+	return toBase64Url(crypto.createHmac("sha256", secret).update(data).digest());
 }
 
 /**
  * 生成 session token。结构：`base64url(json).base64url(hmac)`
  */
-export function createSession(username: string): string {
+export async function createSession(username: string): Promise<string> {
 	const payload = JSON.stringify({ u: username, e: Date.now() + SESSION_TTL_MS });
 	const payloadB64 = toBase64Url(Buffer.from(payload));
-	const mac = hmac(payloadB64);
+	const mac = await hmacAsync(payloadB64);
 	return `${payloadB64}.${mac}`;
 }
 
 /**
  * 校验 session token，失败返回 null。
  */
-export function verifySession(token?: string | null): { u: string; e: number } | null {
+export async function verifySession(token?: string | null): Promise<{ u: string; e: number } | null> {
 	if (!token) return null;
 	const [payloadB64, mac] = token.split(".");
 	if (!payloadB64 || !mac) return null;
-	const expected = hmac(payloadB64);
+	const expected = await hmacAsync(payloadB64);
 	// 防止时序攻击
 	const a = Buffer.from(mac);
 	const b = Buffer.from(expected);

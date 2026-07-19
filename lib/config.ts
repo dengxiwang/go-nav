@@ -6,14 +6,14 @@ import { readNav, readWebsiteData } from "@/lib/server/store";
  * - 静态模式下：next build 期间调用一次并固化到 HTML。
  * - server 模式下：server 组件渲染时调用，配合 revalidatePath 做热更新。
  */
-export function getWebsiteData(): WebsiteData {
+export async function getWebsiteData(): Promise<WebsiteData> {
 	return readWebsiteData();
 }
 
 /**
  * 读取最新的导航数据（所有后台配置）。
  */
-export function getNav(): NavConfig {
+export async function getNav(): Promise<NavConfig> {
 	return readNav();
 }
 

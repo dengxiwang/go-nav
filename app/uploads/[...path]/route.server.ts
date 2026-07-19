@@ -1,8 +1,6 @@
-import fs from "node:fs";
 import path from "node:path";
-import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
-import { UPLOADS_DIR } from "@/lib/server/paths";
+import { getFileStore } from "@/lib/server/storage/driver";
 
 const MIME: Record<string, string> = {
 	".png": "image/png",
@@ -15,38 +13,43 @@ const MIME: Record<string, string> = {
 };
 
 /**
- * 提供 data/uploads 下文件的访问能力：GET /uploads/xxx.png
- * (仅 server 模式下生效；静态模式下文件会被预构建脚本复制到 public/uploads)
+ * 提供 uploads 文件的访问能力：GET /uploads/xxx.png
+ * 通过 FileStore 抽象层读取，兼容 fs 和 Cloudflare R2 两种实现。
  */
 export async function GET(
 	req: Request,
 	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path: segs } = await params;
-	const target = path.join(UPLOADS_DIR, ...segs);
-	const rel = path.relative(UPLOADS_DIR, target);
-	if (rel.startsWith("..") || path.isAbsolute(rel)) {
+	const fileName = segs.join("/");
+	// 安全检查：防止路径越界
+	if (!fileName || fileName.includes("..") || path.isAbsolute(fileName)) {
 		return NextResponse.json({ error: "forbidden" }, { status: 403 });
 	}
-	if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
+
+	const fileStore = getFileStore();
+	const entry = await fileStore.read(fileName);
+	if (!entry) {
 		return NextResponse.json({ error: "not found" }, { status: 404 });
 	}
-	const stat = fs.statSync(target);
-	const ext = path.extname(target).toLowerCase();
-	const etag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
-	const lastModified = stat.mtime.toUTCString();
+
+	const ext = path.extname(fileName).toLowerCase();
+	const etag = `"${entry.size.toString(16)}-${Math.floor(entry.mtime).toString(16)}"`;
+	const lastModified = new Date(entry.mtime).toUTCString();
+
 	if (req.headers.get("if-none-match") === etag) {
 		return new Response(null, { status: 304, headers: { ETag: etag } });
 	}
 	const ifModifiedSince = req.headers.get("if-modified-since");
 	if (ifModifiedSince && Number.isFinite(Date.parse(ifModifiedSince))) {
-		if (stat.mtime.getTime() <= Date.parse(ifModifiedSince)) {
+		if (entry.mtime <= Date.parse(ifModifiedSince)) {
 			return new Response(null, { status: 304, headers: { ETag: etag } });
 		}
 	}
+
 	const headers = new Headers({
 		"Content-Type": MIME[ext] || "application/octet-stream",
-		"Content-Length": String(stat.size),
+		"Content-Length": String(entry.size),
 		"Cache-Control": "public, max-age=31536000, immutable",
 		ETag: etag,
 		"Last-Modified": lastModified,
@@ -55,10 +58,8 @@ export async function GET(
 	if (ext === ".svg") {
 		headers.set("Content-Security-Policy", "script-src 'none'; sandbox");
 	}
-	const stream = Readable.toWeb(fs.createReadStream(target));
-	return new Response(stream as ReadableStream<Uint8Array>, {
-		headers,
-	});
+
+	return new Response(entry.data as unknown as BodyInit, { headers });
 }
 
 export async function HEAD(

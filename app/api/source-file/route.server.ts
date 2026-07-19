@@ -2,11 +2,6 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/server/auth";
 import { revalidateFrontendPaths } from "@/lib/server/revalidate-frontend";
-import path from "node:path";
-import {
-	getStructuredFileFormat,
-	resolveWebsiteFilePathForWrite,
-} from "@/lib/server/paths";
 import {
 	getConfigRevision,
 	parseStructuredContent,
@@ -19,16 +14,15 @@ import type { WebsiteData } from "@/types";
 async function requireAuth(): Promise<boolean> {
 	const store = await cookies();
 	const token = store.get(SESSION_COOKIE)?.value;
-	return !!verifySession(token);
+	return !!await verifySession(token);
 }
 
-function buildSourceFilePayload(websiteData: WebsiteData) {
-	const targetFile = resolveWebsiteFilePathForWrite();
+async function buildSourceFilePayload(websiteData: WebsiteData) {
 	return {
-			content: stringifyStructuredContent(websiteData, targetFile),
-			fileName: path.basename(targetFile),
-			format: getStructuredFileFormat(targetFile),
-			revision: getConfigRevision(),
+			content: stringifyStructuredContent(websiteData, "website"),
+			fileName: "website.json",
+			format: "json" as const,
+			revision: await getConfigRevision(),
 		};
 }
 
@@ -37,8 +31,8 @@ export async function GET() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		const websiteData = readWebsiteData();
-		return NextResponse.json(buildSourceFilePayload(websiteData));
+		const websiteData = await readWebsiteData();
+		return NextResponse.json(await buildSourceFilePayload(websiteData));
 	} catch (e) {
 		return NextResponse.json({ error: (e as Error).message }, { status: 500 });
 	}
@@ -70,12 +64,12 @@ export async function PUT(req: Request) {
 		if (!websiteData || typeof websiteData !== "object" || Array.isArray(websiteData)) {
 			return NextResponse.json({ error: "配置内容无效" }, { status: 400 });
 		}
-		writeWebsiteData(websiteData);
-		revalidateFrontendPaths();
+		await writeWebsiteData(websiteData);
+		await revalidateFrontendPaths();
 		return NextResponse.json({
 			ok: true,
 			websiteData,
-			...buildSourceFilePayload(websiteData),
+			...(await buildSourceFilePayload(websiteData)),
 		});
 	} catch (e) {
 		return NextResponse.json({ error: (e as Error).message }, { status: 500 });

@@ -1,18 +1,12 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
-import {
-	IMAGE_HOST_ASSETS_FILE,
-	listStructuredDataFileCandidates,
-	resolveImageHostFilePathForRead,
-	resolveImageHostFilePathForWrite,
-} from "@/lib/server/paths";
 import {
 	readJsonOr,
 	saveUpload,
 	writeJsonAtomic,
 	type SaveUploadOptions,
 } from "@/lib/server/store";
+import { getStorageDriverName } from "@/lib/server/storage/driver";
 
 export type ImageHostMode =
 	| "local"
@@ -320,32 +314,13 @@ function normalizeConfig(input: Partial<ImageHostConfig>): ImageHostConfig {
 	};
 }
 
-function pruneLegacyImageHostFiles(keepFile: string) {
-	for (const file of listStructuredDataFileCandidates("image-host")) {
-		if (file === keepFile || !fs.existsSync(file)) continue;
-		try {
-			fs.unlinkSync(file);
-		} catch {
-			// 挂载卷不支持删除时保留旧文件，下一次读取仍以当前格式优先。
-		}
-	}
-}
-
-export function readImageHostConfig(): ImageHostConfig {
-	const file = resolveImageHostFilePathForRead();
-	const raw = readJsonOr<Partial<ImageHostConfig>>(file, cloneDefaultConfig());
+export async function readImageHostConfig(): Promise<ImageHostConfig> {
+	const raw = await readJsonOr<Partial<ImageHostConfig>>("image-host", cloneDefaultConfig());
 	return normalizeConfig(raw);
 }
 
-export function writeImageHostConfig(config: ImageHostConfig) {
-	const target = resolveImageHostFilePathForWrite();
-	writeJsonAtomic(target, normalizeConfig(config));
-	pruneLegacyImageHostFiles(target);
-	try {
-		fs.chmodSync(target, 0o600);
-	} catch {
-		// 某些 NAS / Docker 挂载卷不支持 chmod，不能因为权限标记失败影响配置保存。
-	}
+export async function writeImageHostConfig(config: ImageHostConfig) {
+	await writeJsonAtomic("image-host", normalizeConfig(config));
 }
 
 export function toPublicImageHostConfig(
@@ -388,10 +363,10 @@ export function toPublicImageHostConfig(
 	};
 }
 
-export function saveImageHostConfigFromInput(
+export async function saveImageHostConfigFromInput(
 	input: ImageHostConfigInput,
-): PublicImageHostConfig {
-	const current = readImageHostConfig();
+): Promise<PublicImageHostConfig> {
+	const current = await readImageHostConfig();
 	const next = normalizeConfig({
 		...current,
 		...input,
@@ -432,7 +407,7 @@ export function saveImageHostConfigFromInput(
 	if (next.mode !== "local") {
 		assertRemoteReady(next);
 	}
-	writeImageHostConfig(next);
+	await writeImageHostConfig(next);
 	return toPublicImageHostConfig(next);
 }
 
@@ -476,14 +451,14 @@ function normalizeAssetManifest(input: unknown): ImageHostAssetManifest {
 	return { version: 1, assets };
 }
 
-function readAssetManifest(): ImageHostAssetManifest {
+async function readAssetManifest(): Promise<ImageHostAssetManifest> {
 	return normalizeAssetManifest(
-		readJsonOr<unknown>(IMAGE_HOST_ASSETS_FILE, DEFAULT_ASSET_MANIFEST),
+		await readJsonOr<unknown>("image-host-assets", DEFAULT_ASSET_MANIFEST),
 	);
 }
 
-function writeAssetManifest(manifest: ImageHostAssetManifest) {
-	writeJsonAtomic(IMAGE_HOST_ASSETS_FILE, manifest);
+async function writeAssetManifest(manifest: ImageHostAssetManifest) {
+	await writeJsonAtomic("image-host-assets", manifest);
 }
 
 function createAssetMd5(bytes: Buffer): string {
@@ -552,6 +527,10 @@ async function prepareImageAsset(
 ): Promise<PreparedImageAsset> {
 	const sourceExt = inferSourceExtension(fileName, contentType);
 	const sourceMime = contentTypeFromExtension(sourceExt, contentType);
+	// Cloudflare Workers 不支持 sharp 原生模块，直接返回原图
+	if (getStorageDriverName() === "cloudflare") {
+		return { bytes, ext: sourceExt, contentType: sourceMime };
+	}
 	const shouldConvertToWebp =
 		forceWebp === true &&
 		[".jpg", ".png", ".webp", ".svg"].includes(sourceExt);
@@ -1253,8 +1232,8 @@ export function joinImagePublicUrl(
 	return `${prefix}/${relativePath.replace(/^\/+/g, "")}`;
 }
 
-export function resolveImageHostPublicUrl(relativePath: string): string | null {
-	const config = readImageHostConfig();
+export async function resolveImageHostPublicUrl(relativePath: string): Promise<string | null> {
+	const config = await readImageHostConfig();
 	if (!config.publicUrlPrefix) return null;
 	const clean = normalizeRemotePath(relativePath, "");
 	if (!clean) return null;
@@ -1266,7 +1245,7 @@ export async function saveImageAsset(
 	bytes: Buffer,
 	options?: SaveImageAssetOptions,
 ): Promise<string> {
-	const config = readImageHostConfig();
+	const config = await readImageHostConfig();
 	const asset = await prepareImageAsset(
 		fileName,
 		bytes,
@@ -1286,7 +1265,7 @@ export async function saveImageAsset(
 	const remotePath = buildRemoteAssetPath(config, asset.ext);
 	const providers = providersForMode(config);
 	const assetMd5 = createAssetMd5(asset.bytes);
-	const manifest = readAssetManifest();
+	const manifest = await readAssetManifest();
 	const reusableAsset = findReusableAsset(manifest, assetMd5, asset.ext);
 
 	if (reusableAsset) {
@@ -1301,7 +1280,7 @@ export async function saveImageAsset(
 					new Set([...reusableAsset.providers, ...missingProviders]),
 				),
 			};
-			writeAssetManifest(upsertAssetManifestEntry(manifest, updatedEntry));
+			await writeAssetManifest(upsertAssetManifestEntry(manifest, updatedEntry));
 		}
 		const existingUrl = `/${reusableAsset.path}`;
 		if (config.returnUrlMode === "absolute") {
@@ -1312,7 +1291,7 @@ export async function saveImageAsset(
 
 	await uploadToProviders(config, remotePath, asset, providers);
 
-	writeAssetManifest(
+	await writeAssetManifest(
 		upsertAssetManifestEntry(manifest, {
 			md5: assetMd5,
 			path: remotePath,

@@ -24,7 +24,7 @@ function extractPrimaryTitle(rawTitle: string): string {
  */
 export async function POST(req: Request) {
 	const store = await cookies();
-	if (!verifySession(store.get(SESSION_COOKIE)?.value)) {
+	if (!await verifySession(store.get(SESSION_COOKIE)?.value)) {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 

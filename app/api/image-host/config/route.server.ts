@@ -13,7 +13,7 @@ export async function GET() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		return NextResponse.json(toPublicImageHostConfig(readImageHostConfig()));
+		return NextResponse.json(toPublicImageHostConfig(await readImageHostConfig()));
 	} catch (e) {
 		return NextResponse.json({ error: (e as Error).message }, { status: 500 });
 	}
@@ -30,8 +30,8 @@ export async function PUT(req: Request) {
 		return NextResponse.json({ error: "invalid body" }, { status: 400 });
 	}
 	try {
-		const config = saveImageHostConfigFromInput(body);
-		revalidateFrontendPaths();
+		const config = await saveImageHostConfigFromInput(body);
+		await revalidateFrontendPaths();
 		return NextResponse.json(config);
 	} catch (e) {
 		return NextResponse.json({ error: (e as Error).message }, { status: 500 });

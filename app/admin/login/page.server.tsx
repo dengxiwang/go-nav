@@ -10,10 +10,10 @@ import type { IconType } from "react-icons";
 
 export default async function AdminLoginPage() {
 	const store = await cookies();
-	if (verifySession(store.get(SESSION_COOKIE)?.value)) {
+	if (await verifySession(store.get(SESSION_COOKIE)?.value)) {
 		redirect("/admin");
 	}
-	const nav = getNav();
+	const nav = await getNav();
 	const logoSrc = getIconImageSrc(nav.logo);
 
 	return (

@@ -1,14 +1,12 @@
-import fs from "node:fs";
-import path from "node:path";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/server/auth";
 import { readNav, readWebsiteData } from "@/lib/server/store";
-import { UPLOADS_DIR } from "@/lib/server/paths";
+import { getFileStore } from "@/lib/server/storage/driver";
 
 async function requireAuth(): Promise<boolean> {
 	const store = await cookies();
-	return !!verifySession(store.get(SESSION_COOKIE)?.value);
+	return !!await verifySession(store.get(SESSION_COOKIE)?.value);
 }
 
 /**
@@ -16,9 +14,9 @@ async function requireAuth(): Promise<boolean> {
  * 通过整体 JSON.stringify + 正则扫描，可以覆盖任意嵌套字段，
  * 包括插件 code 中的字符串引用，避免误删。
  */
-function collectUsedFiles(): Set<string> {
-	const nav = readNav();
-	const website = readWebsiteData();
+async function collectUsedFiles(): Promise<Set<string>> {
+	const nav = await readNav();
+	const website = await readWebsiteData();
 	const haystack = JSON.stringify(nav) + "\n" + JSON.stringify(website);
 	// 仅匹配合法文件名字符（字母/数字/点/下划线/短横），避免把查询串、转义字符吃进去
 	const re = /\/uploads\/([A-Za-z0-9._-]+)/g;
@@ -30,23 +28,15 @@ function collectUsedFiles(): Set<string> {
 	return used;
 }
 
-function listExistingFiles(): string[] {
-	if (!fs.existsSync(UPLOADS_DIR)) return [];
-	return fs
-		.readdirSync(UPLOADS_DIR)
-		.filter((name) => {
-			if (name.startsWith(".")) return false; // .gitkeep 等
-			try {
-				return fs.statSync(path.join(UPLOADS_DIR, name)).isFile();
-			} catch {
-				return false;
-			}
-		});
+async function listExistingFiles(): Promise<string[]> {
+	const fileStore = getFileStore();
+	const allFiles = await fileStore.list();
+	return allFiles.filter((name: string) => !name.startsWith("."));
 }
 
-function computeOrphans() {
-	const used = collectUsedFiles();
-	const existing = listExistingFiles();
+async function computeOrphans() {
+	const used = await collectUsedFiles();
+	const existing = await listExistingFiles();
 	const orphans = existing.filter((name) => !used.has(name));
 	return {
 		orphans,
@@ -64,7 +54,7 @@ export async function GET() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		const { orphans, usedCount, totalCount } = computeOrphans();
+		const { orphans, usedCount, totalCount } = await computeOrphans();
 		return NextResponse.json({
 			orphans,
 			used: usedCount,
@@ -84,19 +74,13 @@ export async function POST() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		const { orphans, totalCount } = computeOrphans();
+		const { orphans, totalCount } = await computeOrphans();
 		const deleted: string[] = [];
 		const failed: { name: string; error: string }[] = [];
+		const fileStore = getFileStore();
 		for (const name of orphans) {
-			const full = path.join(UPLOADS_DIR, name);
-			// 二次防护：确保目标仍在 uploads 目录内，防止异常文件名越界
-			const rel = path.relative(UPLOADS_DIR, full);
-			if (rel.startsWith("..") || path.isAbsolute(rel)) {
-				failed.push({ name, error: "路径越界" });
-				continue;
-			}
 			try {
-				fs.unlinkSync(full);
+				await fileStore.delete(name);
 				deleted.push(name);
 			} catch (e) {
 				failed.push({ name, error: (e as Error).message });

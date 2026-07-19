@@ -8,6 +8,7 @@ import {
 	readResponseBytes,
 } from "@/lib/server/fetch-utils";
 import { saveImageAsset } from "@/lib/server/image-hosting";
+import { getStorageDriverName } from "@/lib/server/storage/driver";
 
 const MAX_PREVIEW_SIZE = 8 * 1024 * 1024;
 const REQUEST_TIMEOUT = 35_000;
@@ -36,6 +37,10 @@ async function compressPreviewImage(
 ): Promise<{ bytes: Buffer; ext: string }> {
 	if (contentType.toLowerCase().includes("svg")) {
 		return { bytes, ext: ".svg" };
+	}
+	// Cloudflare Workers 不支持 sharp 原生模块，直接返回原图
+	if (getStorageDriverName() === "cloudflare") {
+		return { bytes, ext: contentTypeToExt(contentType) };
 	}
 	try {
 		const sharpMod = (await import("sharp")).default;
@@ -102,7 +107,7 @@ async function tryFetchImage(url: string) {
  */
 export async function POST(req: Request) {
 	const store = await cookies();
-	if (!verifySession(store.get(SESSION_COOKIE)?.value)) {
+	if (!await verifySession(store.get(SESSION_COOKIE)?.value)) {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 

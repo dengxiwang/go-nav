@@ -12,7 +12,7 @@ export async function GET() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		return NextResponse.json(toPublicDataSyncConfig(readDataSyncConfig()));
+		return NextResponse.json(toPublicDataSyncConfig(await readDataSyncConfig()));
 	} catch (e) {
 		return NextResponse.json({ error: (e as Error).message }, { status: 500 });
 	}
@@ -29,7 +29,7 @@ export async function PUT(req: Request) {
 		return NextResponse.json({ error: "invalid body" }, { status: 400 });
 	}
 	try {
-		return NextResponse.json(saveDataSyncConfigFromInput(body));
+		return NextResponse.json(await saveDataSyncConfigFromInput(body));
 	} catch (e) {
 		return NextResponse.json({ error: (e as Error).message }, { status: 500 });
 	}

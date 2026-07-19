@@ -10,14 +10,14 @@ import { collectSiteDetailEntries } from "@/lib/site-detail";
  *
  * 说明：Route Handler 中调用 revalidatePath 只会在“下次访问”时生效。
  */
-export function revalidateFrontendPaths() {
+export async function revalidateFrontendPaths() {
 	revalidatePath("/");
 	revalidatePath("/sitemap.xml");
 
-	const nav = getNav();
+	const nav = await getNav();
 	if (nav.layout?.enableSiteDetailPage !== true) return;
 
-	const websiteData = getWebsiteData();
+	const websiteData = await getWebsiteData();
 	const entries = collectSiteDetailEntries(websiteData.categories);
 	for (const entry of entries) {
 		// 兼容 trailingSlash 配置，两个路径都标记一次。

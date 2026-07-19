@@ -1,0 +1,15 @@
+name = "go-nav"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = ".open-next"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "go-nav-data"
+database_id = "<创建后填入>"
+
+[[r2_buckets]]
+binding = "UPLOADS_BUCKET"
+bucket_name = "go-nav-uploads"
+
+[vars]
+STORAGE_DRIVER = "cloudflare"

@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 		return NextResponse.json({ error: "用户名或密码错误" }, { status: 401 });
 	}
 
-	const token = createSession(username);
+	const token = await createSession(username);
 	const res = NextResponse.json({ ok: true });
 	res.cookies.set(SESSION_COOKIE, token, {
 		httpOnly: true,

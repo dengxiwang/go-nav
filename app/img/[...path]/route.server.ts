@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { joinImagePublicUrl, readImageHostConfig } from "@/lib/server/image-hosting";
 
-function redirectToImageHost(segs: string[]) {
+async function redirectToImageHost(segs: string[]) {
 	const clean = segs
 		.map((seg) => seg.trim())
 		.filter(Boolean)
@@ -13,7 +13,7 @@ function redirectToImageHost(segs: string[]) {
 		return NextResponse.json({ error: "forbidden" }, { status: 403 });
 	}
 
-	const config = readImageHostConfig();
+	const config = await readImageHostConfig();
 	if (!config.publicUrlPrefix) {
 		return NextResponse.json({ error: "image host prefix not configured" }, { status: 404 });
 	}
@@ -29,7 +29,7 @@ export async function GET(
 	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params;
-	return redirectToImageHost(path);
+	return await redirectToImageHost(path);
 }
 
 export async function HEAD(
@@ -37,5 +37,5 @@ export async function HEAD(
 	{ params }: { params: Promise<{ path: string[] }> },
 ) {
 	const { path } = await params;
-	return redirectToImageHost(path);
+	return await redirectToImageHost(path);
 }

@@ -27,10 +27,10 @@ export async function GET() {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	try {
-		const revision = getConfigRevision();
+		const revision = await getConfigRevision();
 		const res = NextResponse.json({
-			websiteData: readWebsiteData(),
-			nav: readNav(),
+			websiteData: await readWebsiteData(),
+			nav: await readNav(),
 			revision,
 		});
 		res.headers.set("ETag", `"${revision}"`);
@@ -55,7 +55,7 @@ export async function PUT(req: Request) {
 		return NextResponse.json({ error: "invalid body" }, { status: 400 });
 	}
 	try {
-		const currentRevision = getConfigRevision();
+		const currentRevision = await getConfigRevision();
 		const ifMatch = req.headers.get("if-match")?.replace(/^"|"$/g, "");
 		const expectedRevision = body.revision || ifMatch;
 		if (expectedRevision && expectedRevision !== currentRevision) {
@@ -68,10 +68,10 @@ export async function PUT(req: Request) {
 				{ status: 409 },
 			);
 		}
-		if (body.websiteData) writeWebsiteData(body.websiteData);
-		if (body.nav) writeNav(body.nav);
-		revalidateFrontendPaths();
-		const revision = getConfigRevision();
+		if (body.websiteData) await writeWebsiteData(body.websiteData);
+		if (body.nav) await writeNav(body.nav);
+		await revalidateFrontendPaths();
+		const revision = await getConfigRevision();
 		const res = NextResponse.json({ ok: true, revision });
 		res.headers.set("ETag", `"${revision}"`);
 		return res;

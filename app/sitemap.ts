@@ -4,11 +4,11 @@ import { collectSiteDetailEntries } from "@/lib/site-detail";
 
 export const dynamic = "force-static";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const origin = resolveSiteOrigin();
-	const nav = getNav();
+	const nav = await getNav();
 	const detailEnabled = nav.layout?.enableSiteDetailPage === true;
-	const websiteData = getWebsiteData();
+	const websiteData = await getWebsiteData();
 	const detailEntries = detailEnabled
 		? collectSiteDetailEntries(websiteData.categories)
 		: [];

@@ -1,14 +1,5 @@
-import fs from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import {
-	listStructuredDataFileCandidates,
-	resolveNavFilePathForWrite,
-	resolveSyncFilePathForRead,
-	resolveSyncFilePathForWrite,
-	resolveWebsiteFilePathForWrite,
-	UPLOADS_DIR,
-} from "@/lib/server/paths";
 import {
 	parseStructuredContent,
 	readJsonOr,
@@ -19,6 +10,7 @@ import {
 	writeNav,
 	writeWebsiteData,
 } from "@/lib/server/store";
+import { getFileStore } from "@/lib/server/storage/driver";
 import {
 	createDataBackupZip,
 	disableJsPluginsForRestore,
@@ -271,32 +263,37 @@ function safeUploadName(name: string): string | null {
 	return base;
 }
 
-function getUploadEntriesForSync(): SyncUploadFile[] {
-	if (!fs.existsSync(UPLOADS_DIR)) return [];
+async function getUploadEntriesForSync(): Promise<SyncUploadFile[]> {
+	const fileStore = getFileStore();
 	const uploads: SyncUploadFile[] = [];
-	for (const file of fs.readdirSync(UPLOADS_DIR)) {
-		const safe = safeUploadName(file);
-		if (!safe) continue;
-		const full = path.join(UPLOADS_DIR, safe);
-		try {
-			if (!fs.statSync(full).isFile()) continue;
-			uploads.push({ name: safe, data: fs.readFileSync(full) });
-		} catch {
-			// 单个文件读取失败不应阻塞整体同步。
+	try {
+		const allFiles = await fileStore.list();
+		for (const file of allFiles) {
+			const safe = safeUploadName(file);
+			if (!safe) continue;
+			try {
+				const entry = await fileStore.read(safe);
+				if (!entry) continue;
+				uploads.push({ name: safe, data: Buffer.from(entry.data) });
+			} catch {
+				// 单个文件读取失败不应阻塞整体同步。
+			}
 		}
+	} catch {
+		// 列目录失败时返回空数组
 	}
 	return uploads;
 }
 
-function collectGitHubSyncFiles(baseDir: string): SyncFileEntry[] {
-	const websiteData = readWebsiteData();
-	const nav = readNav();
+async function collectGitHubSyncFiles(baseDir: string): Promise<SyncFileEntry[]> {
+	const websiteData = await readWebsiteData();
+	const nav = await readNav();
 	const files: SyncFileEntry[] = [
 		collectStructuredSyncEntry(baseDir, "website", websiteData),
 		collectStructuredSyncEntry(baseDir, "nav", nav),
 	];
 
-	for (const upload of getUploadEntriesForSync()) {
+	for (const upload of await getUploadEntriesForSync()) {
 		files.push({
 			path: `${baseDir}/uploads/${upload.name}`,
 			data: upload.data,
@@ -311,46 +308,21 @@ function collectStructuredSyncEntry(
 	baseName: "website" | "nav",
 	value: unknown,
 ): SyncFileEntry {
-	const targetFile =
-		baseName === "website"
-			? resolveWebsiteFilePathForWrite()
-			: resolveNavFilePathForWrite();
-	const fileName = path.basename(targetFile);
-	const serialized = fileName.endsWith(".json")
-		? JSON.stringify(value, null, 2)
-		: stringifyStructuredContent(value, `${baseName}.yaml`);
+	const fileName = `${baseName}.json`;
+	const serialized = JSON.stringify(value, null, 2);
 	return {
 		path: `${baseDir}/${fileName}`,
 		data: Buffer.from(serialized, "utf8"),
 	};
 }
 
-function pruneLegacySyncFiles(keepFile: string) {
-	for (const file of listStructuredDataFileCandidates("sync")) {
-		if (file === keepFile || !fs.existsSync(file)) continue;
-		try {
-			fs.unlinkSync(file);
-		} catch {
-			// 不支持删除旧文件的挂载卷上，保留旧文件不影响正常使用。
-		}
-	}
-}
-
-export function readDataSyncConfig(): DataSyncConfig {
-	const file = resolveSyncFilePathForRead();
-	const raw = readJsonOr<Partial<DataSyncConfig>>(file, cloneDefaultConfig());
+export async function readDataSyncConfig(): Promise<DataSyncConfig> {
+	const raw = await readJsonOr<Partial<DataSyncConfig>>("data-sync", cloneDefaultConfig());
 	return normalizeConfig(raw);
 }
 
-export function writeDataSyncConfig(config: DataSyncConfig) {
-	const target = resolveSyncFilePathForWrite();
-	writeJsonAtomic(target, normalizeConfig(config));
-	pruneLegacySyncFiles(target);
-	try {
-		fs.chmodSync(target, 0o600);
-	} catch {
-		// 某些挂载卷不支持 chmod，同步功能不应因此整体不可用。
-	}
+export async function writeDataSyncConfig(config: DataSyncConfig) {
+	await writeJsonAtomic("data-sync", normalizeConfig(config));
 }
 
 export function toPublicDataSyncConfig(
@@ -373,10 +345,10 @@ export function toPublicDataSyncConfig(
 	};
 }
 
-export function saveDataSyncConfigFromInput(
+export async function saveDataSyncConfigFromInput(
 	input: DataSyncConfigInput,
-): PublicDataSyncConfig {
-	const current = readDataSyncConfig();
+): Promise<PublicDataSyncConfig> {
+	const current = await readDataSyncConfig();
 	const next = normalizeConfig({
 		github: {
 			...current.github,
@@ -395,12 +367,12 @@ export function saveDataSyncConfigFromInput(
 					: current.webdav.password,
 		},
 	});
-	writeDataSyncConfig(next);
+	await writeDataSyncConfig(next);
 	return toPublicDataSyncConfig(next);
 }
 
 export async function listWebDavBackups(): Promise<WebDavBackupEntry[]> {
-	const config = readDataSyncConfig();
+	const config = await readDataSyncConfig();
 	const entries = await listWebDavBackupFiles(config.webdav);
 	return entries
 		.filter((entry) => !entry.isCollection)
@@ -422,7 +394,7 @@ export async function listWebDavBackups(): Promise<WebDavBackupEntry[]> {
 }
 
 export async function deleteWebDavBackup(targetPathInput: string): Promise<void> {
-	const config = readDataSyncConfig();
+	const config = await readDataSyncConfig();
 	await deleteWebDavBackupFile(config.webdav, targetPathInput);
 }
 
@@ -431,7 +403,7 @@ export async function runDataSync(
 	action: SyncAction,
 	options: DataSyncRunOptions = {},
 ): Promise<DataSyncRunResult> {
-	const config = readDataSyncConfig();
+	const config = await readDataSyncConfig();
 	const at = new Date().toISOString();
 	const onProgress = options.onProgress;
 	const logProgress = async (
@@ -477,7 +449,7 @@ export async function runDataSync(
 			}
 		} else if (action === "push") {
 			await logProgress("info", "正在打包本地备份数据...");
-			const zip = createDataBackupZip();
+			const zip = await createDataBackupZip();
 			await logProgress("info", `备份打包完成，大小 ${formatBytes(zip.length)}。`);
 			const remote = await pushToWebDav(config.webdav, zip);
 			result = {
@@ -493,7 +465,7 @@ export async function runDataSync(
 			await logProgress("info", "正在拉取远端 WebDAV 备份...");
 			const { remote, zip } = await pullFromWebDav(config.webdav, options.target);
 			await logProgress("info", `拉取完成，大小 ${formatBytes(zip.length)}。`);
-			const restored = restoreDataBackupZip(zip);
+			const restored = await restoreDataBackupZip(zip);
 			result = {
 				ok: true,
 				provider,
@@ -857,7 +829,7 @@ async function pushToGitHub(
 		`目标仓库 ${parts.owner}/${parts.repo}，分支 ${config.branch}，目录 ${baseDir}`,
 	);
 	const remote = `github:${parts.owner}/${parts.repo}@${config.branch}:${baseDir}/(website.yaml,website.json,nav.yaml,nav.json,uploads/*)`;
-	const files = collectGitHubSyncFiles(baseDir);
+	const files = await collectGitHubSyncFiles(baseDir);
 	if (files.length === 0) {
 		throw new Error("没有可同步到 GitHub 的数据文件");
 	}
@@ -1066,8 +1038,8 @@ async function pullFromGitHub(
 		throw new Error(`GitHub 的 ${path.basename(navFile.path)} 解析失败`);
 	}
 
-	writeWebsiteData(websiteData);
-	writeNav(navData);
+	await writeWebsiteData(websiteData);
+	await writeNav(navData);
 	await log?.("info", "本地配置已更新。");
 
 	const uploadEntries = await listGitHubDirectoryRecursive(
@@ -1080,7 +1052,7 @@ async function pullFromGitHub(
 	let uploadsCount = 0;
 	if (uploadEntries.length > 0) {
 		await log?.("info", `发现 ${uploadEntries.length} 个远端上传文件，正在写入本地...`);
-		fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+		const fileStore = getFileStore();
 		for (const entry of uploadEntries) {
 			if (!entry.path) continue;
 			const name = entry.path.slice(uploadsDirPath.length + 1);
@@ -1092,7 +1064,7 @@ async function pullFromGitHub(
 				config.branch,
 				config.token,
 			);
-			fs.writeFileSync(path.join(UPLOADS_DIR, safe), buf);
+			await fileStore.write(safe, buf);
 			uploadsCount += 1;
 		}
 	}

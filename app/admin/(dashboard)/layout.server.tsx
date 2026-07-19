@@ -19,9 +19,9 @@ export default async function DashboardLayout({
 	if (!verifySession(store.get(SESSION_COOKIE)?.value)) {
 		redirect("/admin/login");
 	}
-	const websiteData = readWebsiteData();
-	const nav = readNav();
-	const revision = getConfigRevision();
+	const websiteData = await readWebsiteData();
+	const nav = await readNav();
+	const revision = await getConfigRevision();
 	return (
 		<AdminStoreProvider initial={{ websiteData, nav, revision }}>
 			<AdminShell>{children}</AdminShell>

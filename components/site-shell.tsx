@@ -5,9 +5,9 @@ import { SiteStoreProvider } from "@/lib/store/hydrate";
 import { getNav, getWebsiteData } from "@/lib/config";
 import { pluginHasRenderablePayload } from "@/lib/plugin-config";
 
-export function SiteShell() {
-	const websiteData = getWebsiteData();
-	const nav = getNav();
+export async function SiteShell() {
+	const websiteData = await getWebsiteData();
+	const nav = await getNav();
 	const plugins = (nav.plugins ?? [])
 		.filter(pluginHasRenderablePayload)
 		.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));

@@ -1,11 +1,5 @@
-import fs from "node:fs";
 import path from "node:path";
 import { isExecutablePlugin } from "@/lib/plugin-config";
-import {
-	resolveNavFilePathForWrite,
-	resolveWebsiteFilePathForWrite,
-	UPLOADS_DIR,
-} from "@/lib/server/paths";
 import {
 	parseStructuredContent,
 	readNav,
@@ -14,6 +8,7 @@ import {
 	writeNav,
 	writeWebsiteData,
 } from "@/lib/server/store";
+import { getFileStore } from "@/lib/server/storage/driver";
 import { createZip, parseZip, type ZipEntry } from "@/lib/server/zip";
 import type { NavConfig, WebsiteData } from "@/types";
 
@@ -43,28 +38,33 @@ function safeUploadName(name: string): string | null {
 	return base;
 }
 
-function readAllUploads(): ZipEntry[] {
-	if (!fs.existsSync(UPLOADS_DIR)) return [];
+async function readAllUploads(): Promise<ZipEntry[]> {
+	const fileStore = getFileStore();
 	const entries: ZipEntry[] = [];
-	for (const file of fs.readdirSync(UPLOADS_DIR)) {
-		const full = path.join(UPLOADS_DIR, file);
-		try {
-			const stat = fs.statSync(full);
-			if (!stat.isFile()) continue;
-			entries.push({
-				name: `uploads/${file}`,
-				data: fs.readFileSync(full),
-			});
-		} catch {
-			// 单个素材读取失败不应中断整包导出。
+	try {
+		const allFiles = await fileStore.list();
+		for (const file of allFiles) {
+			if (file.startsWith(".")) continue;
+			try {
+				const entry = await fileStore.read(file);
+				if (!entry) continue;
+				entries.push({
+					name: `uploads/${file}`,
+					data: Buffer.from(entry.data),
+				});
+			} catch {
+				// 单个素材读取失败不应中断整包导出。
+			}
 		}
+	} catch {
+		// 列目录失败时返回空数组
 	}
 	return entries;
 }
 
-export function createDataBackupZip(): Buffer {
-	const websiteData = readWebsiteData();
-	const nav = readNav();
+export async function createDataBackupZip(): Promise<Buffer> {
+	const websiteData = await readWebsiteData();
+	const nav = await readNav();
 	const meta = {
 		version: "2.0",
 		scope: "go-nav-data",
@@ -77,7 +77,7 @@ export function createDataBackupZip(): Buffer {
 		},
 		createStructuredBackupEntry("website", websiteData),
 		createStructuredBackupEntry("nav", nav),
-		...readAllUploads(),
+		...(await readAllUploads()),
 	];
 	return createZip(entries);
 }
@@ -86,7 +86,7 @@ export function createBackupFileName(date = new Date()): string {
 	return `go-nav-backup-${date.toISOString().slice(0, 10)}.zip`;
 }
 
-export function restoreDataBackupZip(buf: Buffer): BackupRestoreResult {
+export async function restoreDataBackupZip(buf: Buffer): Promise<BackupRestoreResult> {
 	let entries: ZipEntry[];
 	try {
 		entries = parseZip(buf);
@@ -132,12 +132,12 @@ export function restoreDataBackupZip(buf: Buffer): BackupRestoreResult {
 		throw new Error("压缩包中未找到 website/nav 配置文件或 uploads/");
 	}
 
-	if (websiteData) writeWebsiteData(websiteData);
-	if (nav) writeNav(nav);
+	if (websiteData) await writeWebsiteData(websiteData);
+	if (nav) await writeNav(nav);
 	if (uploads.length > 0) {
-		fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+		const fileStore = getFileStore();
 		for (const u of uploads) {
-			fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.data);
+			await fileStore.write(u.name, u.data);
 		}
 	}
 
@@ -153,11 +153,7 @@ function createStructuredBackupEntry(
 	baseName: "website" | "nav",
 	value: unknown,
 ): ZipEntry {
-	const targetFile =
-		baseName === "website"
-			? resolveWebsiteFilePathForWrite()
-			: resolveNavFilePathForWrite();
-	const name = path.basename(targetFile);
+	const name = baseName === "website" ? "website.json" : "nav.json";
 	return {
 		name,
 		data: Buffer.from(

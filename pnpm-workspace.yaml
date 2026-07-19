@@ -5,8 +5,10 @@ confirmModulesPurge: false
 verifyDepsBeforeRun: false
 
 allowBuilds:
+  esbuild: set this to true or false
   sharp: true
   unrs-resolver: true
+  workerd: set this to true or false
 
 minimumReleaseAgeExclude:
   - '@uiw/codemirror-extensions-basic-setup@4.25.10'

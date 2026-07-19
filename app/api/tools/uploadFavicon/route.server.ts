@@ -19,7 +19,7 @@ const DATA_URL_IMAGE_RE = /^data:image\/([^;]+);base64,([a-z0-9+/=\s]+)$/i;
  */
 export async function POST(req: Request) {
 	const store = await cookies();
-	if (!verifySession(store.get(SESSION_COOKIE)?.value)) {
+	if (!await verifySession(store.get(SESSION_COOKIE)?.value)) {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 
@@ -76,7 +76,8 @@ export async function POST(req: Request) {
 			return NextResponse.json({ error: "图标过大（最大 2MB）" }, { status: 413 });
 		}
 
-		const convertToWebp = readNav().imageUpload?.convertToWebp === true;
+		const nav = await readNav();
+		const convertToWebp = nav.imageUpload?.convertToWebp === true;
 		const url = await saveImageAsset(`favicon${ext}`, bytes, {
 			dedupeByContent: true,
 			preferredExistingUrl: body.existingIconUrl,

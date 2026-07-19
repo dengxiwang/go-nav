@@ -29,7 +29,7 @@ function extensionByFormat(format: StructuredFileFormat): ".yaml" | ".json" {
 	return format === "yaml" ? ".yaml" : ".json";
 }
 
-function resolveStructuredDataReadOrder(): readonly string[] {
+export function resolveStructuredDataReadOrder(): readonly string[] {
 	if (STRUCTURED_WRITE_FORMAT === "yaml") {
 		return [".yaml", ".yml", ".json"];
 	}

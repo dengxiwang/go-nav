@@ -1,17 +1,10 @@
-import fs from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { NavConfig, WebsiteData } from "@/types";
-import {
-	getStructuredFileFormat,
-	listStructuredDataFileCandidates,
-	resolveNavFilePathForRead,
-	resolveNavFilePathForWrite,
-	resolveWebsiteFilePathForRead,
-	resolveWebsiteFilePathForWrite,
-	UPLOADS_DIR,
-} from "./paths";
+import { getConfigStore, getFileStore } from "./storage/driver";
+
+// ─── 默认值 ──────────────────────────────────────────────────
 
 /**
  * 网站内容数据默认值（未生成 website 配置文件时使用）。
@@ -36,22 +29,10 @@ export const DEFAULT_NAV: NavConfig = {
 	qrCode: "https://www.gotab.cn/images/wx.webp",
 	qrCodeText: "微信扫一扫",
 	footerLinks: [
-		{
-			label: "GOTAB 官网",
-			href: "https://www.gotab.cn",
-		},
-		{
-			label: "作者 GitHub",
-			href: "https://github.com/dengxiwang/go-nav",
-		},
-		{
-			label: " GoTab 新标签页",
-			href: "https://web.gotab.cn",
-		},
-		{
-			label: "博客",
-			href: "https://blog.gotab.cn",
-		},
+		{ label: "GOTAB 官网", href: "https://www.gotab.cn" },
+		{ label: "作者 GitHub", href: "https://github.com/dengxiwang/go-nav" },
+		{ label: " GoTab 新标签页", href: "https://web.gotab.cn" },
+		{ label: "博客", href: "https://blog.gotab.cn" },
 	],
 	themeMode: "system",
 	search: {
@@ -62,24 +43,9 @@ export const DEFAULT_NAV: NavConfig = {
 		enableTabFocus: true,
 		placeholder: "搜索网站或直接按 Enter 通过外部引擎搜索...",
 		engines: [
-			{
-				id: "baidu",
-				name: "百度",
-				icon: "/images/baidu.svg",
-				url: "https://www.baidu.com/s?wd={query}&tn=68018901_11_oem_dg",
-			},
-			{
-				id: "bing",
-				name: "必应",
-				icon: "/images/bing.svg",
-				url: "https://www.bing.com/search?q={query}",
-			},
-			{
-				id: "google",
-				name: "谷歌",
-				icon: "/images/google.svg",
-				url: "https://www.google.com/search?q={query}",
-			},
+			{ id: "baidu", name: "百度", icon: "/images/baidu.svg", url: "https://www.baidu.com/s?wd={query}&tn=68018901_11_oem_dg" },
+			{ id: "bing", name: "必应", icon: "/images/bing.svg", url: "https://www.bing.com/search?q={query}" },
+			{ id: "google", name: "谷歌", icon: "/images/google.svg", url: "https://www.google.com/search?q={query}" },
 		],
 	},
 	ads: [
@@ -92,9 +58,7 @@ export const DEFAULT_NAV: NavConfig = {
 			enabled: true,
 		},
 	],
-	imageUpload: {
-		convertToWebp: false,
-	},
+	imageUpload: { convertToWebp: false },
 	plugins: [],
 	layout: {
 		maxWidth: "1400",
@@ -110,9 +74,7 @@ export const DEFAULT_NAV: NavConfig = {
 	adsAspectRatio: "4/3",
 };
 
-function isMissingFileError(e: unknown): boolean {
-	return (e as NodeJS.ErrnoException)?.code === "ENOENT";
-}
+// ─── 缓存 ────────────────────────────────────────────────────
 
 const structuredCache = new Map<string, { stamp: string; value: unknown }>();
 
@@ -120,137 +82,147 @@ function cloneJson<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 
-/**
- * 读取结构化配置文件（JSON/YAML）并递归剥离 `_comment*` 注释字段。
- */
-export function readJson<T>(file: string): T {
-	const stat = fs.statSync(file);
-	const stamp = `${stat.mtimeMs}:${stat.size}`;
-	const cached = structuredCache.get(file);
-	if (cached?.stamp === stamp) return cached.value as T;
+// ─── 配置格式判断（基于 key 名） ─────────────────────────────
 
-	const raw = fs.readFileSync(file, "utf-8");
-	const value = stripComments(parseStructuredFile(raw, file)) as T;
-	structuredCache.set(file, { stamp, value });
+function isJsonKey(key: string): boolean {
+	// 所有已知配置 key 默认使用 JSON 格式
+	// 如果 key 以 .json 结尾也视为 JSON
+	return key.endsWith(".json") || !key.endsWith(".yaml") && !key.endsWith(".yml");
+}
+
+// ─── 核心读写（通过存储抽象层） ──────────────────────────────
+
+/**
+ * 读取结构化配置并递归剥离 `_comment*` 注释字段。
+ */
+export async function readJson<T>(key: string): Promise<T> {
+	const store = getConfigStore();
+	const raw = await store.read(key);
+	if (raw === null) throw new Error(`配置文件 ${key} 不存在`);
+	const stamp = `${raw.length}`;
+	const cached = structuredCache.get(key);
+	if (cached?.stamp === stamp) return cached.value as T;
+	const value = stripComments(parseStructuredContentByKey(raw, key)) as T;
+	structuredCache.set(key, { stamp, value });
 	return value;
 }
 
 /**
- * 容错读取：文件不存在或解析失败时返回 fallback。
- * 解析错误仅打印警告，不向上抛，避免首次部署或配置损坏导致整站 500。
+ * 容错读取：配置不存在或解析失败时返回 fallback。
  */
-export function readJsonOr<T>(file: string, fallback: T): T {
+export async function readJsonOr<T>(key: string, fallback: T): Promise<T> {
 	try {
-		return readJson<T>(file);
+		return await readJson<T>(key);
 	} catch (e) {
-		if (isMissingFileError(e)) return cloneJson(fallback);
 		console.warn(
-			`[store] 读取 ${file} 失败，使用默认值：${(e as Error).message}`,
+			`[store] 读取 ${key} 失败，使用默认值：${(e as Error).message}`,
 		);
 		return cloneJson(fallback);
 	}
 }
 
 /**
- * 原子性写入结构化配置文件（先写临时文件再 rename，避免中途读到半截数据）。
+ * 写入结构化配置。
  */
-export function writeJsonAtomic(file: string, value: unknown) {
-	fs.mkdirSync(path.dirname(file), { recursive: true });
-	const tmp = `${file}.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-	fs.writeFileSync(tmp, stringifyStructuredFile(value, file), "utf-8");
-	fs.renameSync(tmp, file);
-	structuredCache.delete(file);
+export async function writeJsonAtomic(key: string, value: unknown): Promise<void> {
+	const store = getConfigStore();
+	const content = stringifyStructuredFile(value, key);
+	await store.write(key, content);
+	structuredCache.delete(key);
 }
+
+// ─── 解析/序列化（纯函数，保持同步） ─────────────────────────
 
 export function parseStructuredContent<T>(content: string): T {
 	return stripComments(parseYaml(content)) as T;
 }
 
-export function stringifyStructuredContent(value: unknown, file: string): string {
-	return stringifyStructuredFile(value, file);
+function parseStructuredContentByKey<T>(raw: string, key: string): T {
+	if (isJsonKey(key)) {
+		return JSON.parse(raw) as T;
+	}
+	return stripComments(parseYaml(raw)) as T;
 }
 
-export function readWebsiteData(): WebsiteData {
-	return readJsonOr<WebsiteData>(resolveWebsiteFilePathForRead(), DEFAULT_WEBSITE);
+export function stringifyStructuredContent(value: unknown, key: string): string {
+	return stringifyStructuredFile(value, key);
 }
 
-export function writeWebsiteData(v: WebsiteData) {
-	const target = resolveWebsiteFilePathForWrite();
-	writeJsonAtomic(target, v);
-	pruneLegacyStructuredFiles("website", target);
+function stringifyStructuredFile(value: unknown, key: string): string {
+	if (isJsonKey(key)) {
+		return JSON.stringify(value, null, 2);
+	}
+	return stringifyYaml(value, { indent: 2, lineWidth: 0 });
 }
 
-export function readNav(): NavConfig {
-	return readJsonOr<NavConfig>(resolveNavFilePathForRead(), DEFAULT_NAV);
+// ─── 业务级读写 ──────────────────────────────────────────────
+
+export async function readWebsiteData(): Promise<WebsiteData> {
+	return readJsonOr<WebsiteData>("website", DEFAULT_WEBSITE);
 }
 
-export function writeNav(v: NavConfig) {
-	const target = resolveNavFilePathForWrite();
-	writeJsonAtomic(target, v);
-	pruneLegacyStructuredFiles("nav", target);
+export async function writeWebsiteData(v: WebsiteData): Promise<void> {
+	await writeJsonAtomic("website", v);
 }
 
-export function getConfigRevision(): string {
-	const parts = [resolveWebsiteFilePathForRead(), resolveNavFilePathForRead()].map(
-		(file) => {
-			try {
-				const stat = fs.statSync(file);
-				return `${file}:${stat.mtimeMs}:${stat.size}`;
-			} catch {
-				return `${file}:missing`;
-			}
-		},
+export async function readNav(): Promise<NavConfig> {
+	return readJsonOr<NavConfig>("nav", DEFAULT_NAV);
+}
+
+export async function writeNav(v: NavConfig): Promise<void> {
+	await writeJsonAtomic("nav", v);
+}
+
+export async function getConfigRevision(): Promise<string> {
+	const store = getConfigStore();
+	const parts = await Promise.all(
+		["website", "nav"].map(async (key) => {
+			const content = await store.read(key);
+			if (content === null) return `${key}:missing`;
+			return `${key}:${content.length}`;
+		}),
 	);
 	return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 16);
 }
 
-/**
- * 保存上传文件到 UPLOADS_DIR，返回对外可访问的 URL（/uploads/xxx）。
- */
+// ─── 上传文件操作（通过 FileStore） ──────────────────────────
+
 export interface SaveUploadOptions {
-	/**
-	 * 开启后会按内容哈希去重：同内容文件复用已有 URL，避免重复写入。
-	 */
 	dedupeByContent?: boolean;
-	/**
-	 * 当前正在使用的上传 URL（例如站点现有 icon/preview）。
-	 * 当内容一致时优先复用该 URL，避免字段发生无意义变更。
-	 */
 	preferredExistingUrl?: string;
 }
 
-export function saveUpload(
+export async function saveUpload(
 	fileName: string,
 	bytes: Buffer,
 	options?: SaveUploadOptions,
-): string {
-	fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+): Promise<string> {
+	const fileStore = getFileStore();
 	const ext = sanitizeExtension(path.extname(fileName)) || ".bin";
 	const base = createUploadBaseName(
 		path.basename(fileName, path.extname(fileName)),
 	);
 	if (!options?.dedupeByContent) {
-		return saveUploadWithRandomSuffix(base, ext, bytes);
+		return saveUploadWithRandomSuffix(fileStore, base, ext, bytes);
 	}
 
 	const contentHash = createUploadContentHash(bytes);
-	const preferredPath = resolveUploadPathFromUrl(options.preferredExistingUrl);
-	if (preferredPath && hasUploadWithHash(preferredPath, contentHash)) {
-		return toUploadUrl(path.basename(preferredPath));
+	const preferredFileName = resolveUploadFileNameFromUrl(options.preferredExistingUrl);
+	if (preferredFileName && await hasFileStoreUploadWithHash(fileStore, preferredFileName, contentHash)) {
+		return toUploadUrl(preferredFileName);
 	}
 
 	const hashFileName = `${base}-${contentHash.slice(0, 12)}${ext}`;
-	const hashFilePath = path.join(UPLOADS_DIR, hashFileName);
-	if (hasUploadWithHash(hashFilePath, contentHash)) {
+	if (await hasFileStoreUploadWithHash(fileStore, hashFileName, contentHash)) {
 		return toUploadUrl(hashFileName);
 	}
 
-	const existing = findExistingUploadByHash(base, ext, contentHash);
+	const existing = await findExistingUploadByHash(fileStore, base, ext, contentHash);
 	if (existing) {
 		return existing;
 	}
 
-	fs.writeFileSync(hashFilePath, bytes);
+	await fileStore.write(hashFileName, bytes);
 	return toUploadUrl(hashFileName);
 }
 
@@ -272,12 +244,17 @@ function createUploadBaseName(name: string): string {
 	return slug || "icon";
 }
 
-function saveUploadWithRandomSuffix(base: string, ext: string, bytes: Buffer): string {
+async function saveUploadWithRandomSuffix(
+	fileStore: ReturnType<typeof getFileStore>,
+	base: string,
+	ext: string,
+	bytes: Buffer,
+): Promise<string> {
 	let unique = "";
 	do {
 		unique = `${base}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-	} while (fs.existsSync(path.join(UPLOADS_DIR, unique)));
-	fs.writeFileSync(path.join(UPLOADS_DIR, unique), bytes);
+	} while (await fileStore.exists(unique));
+	await fileStore.write(unique, bytes);
 	return toUploadUrl(unique);
 }
 
@@ -289,18 +266,22 @@ function createUploadContentHash(bytes: Buffer): string {
 	return createHash("sha256").update(bytes).digest("hex");
 }
 
-function hasUploadWithHash(filePath: string, expectedHash: string): boolean {
+async function hasFileStoreUploadWithHash(
+	fileStore: ReturnType<typeof getFileStore>,
+	fileName: string,
+	expectedHash: string,
+): Promise<boolean> {
 	try {
-		if (!fs.existsSync(filePath)) return false;
-		if (!fs.statSync(filePath).isFile()) return false;
-		const existingHash = createUploadContentHash(fs.readFileSync(filePath));
+		const entry = await fileStore.read(fileName);
+		if (!entry) return false;
+		const existingHash = createUploadContentHash(Buffer.from(entry.data));
 		return existingHash === expectedHash;
 	} catch {
 		return false;
 	}
 }
 
-function resolveUploadPathFromUrl(url: string | undefined): string | null {
+function resolveUploadFileNameFromUrl(url: string | undefined): string | null {
 	if (!url) return null;
 	const clean = url.split("?")[0]?.split("#")[0] || "";
 	if (!clean.startsWith("/uploads/")) return null;
@@ -308,43 +289,38 @@ function resolveUploadPathFromUrl(url: string | undefined): string | null {
 	if (!rawFileName || rawFileName.includes("/") || rawFileName.includes("\\")) {
 		return null;
 	}
-	let fileName = rawFileName;
 	try {
-		fileName = decodeURIComponent(rawFileName);
+		return decodeURIComponent(rawFileName);
 	} catch {
 		return null;
 	}
-	const filePath = path.join(UPLOADS_DIR, fileName);
-	const rel = path.relative(UPLOADS_DIR, filePath);
-	if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
-	return filePath;
 }
 
-function findExistingUploadByHash(
+async function findExistingUploadByHash(
+	fileStore: ReturnType<typeof getFileStore>,
 	base: string,
 	ext: string,
 	expectedHash: string,
-): string | null {
+): Promise<string | null> {
 	const prefix = `${base}-`;
 	try {
-		const entries = fs.readdirSync(UPLOADS_DIR, { withFileTypes: true });
-		for (const entry of entries) {
-			if (!entry.isFile()) continue;
-			const name = entry.name;
+		const allFiles = await fileStore.list();
+		for (const name of allFiles) {
 			if (path.extname(name).toLowerCase() !== ext) continue;
 			const isTargetBase =
 				name === `${base}${ext}` || name.startsWith(prefix);
 			if (!isTargetBase) continue;
-			const filePath = path.join(UPLOADS_DIR, name);
-			if (hasUploadWithHash(filePath, expectedHash)) {
+			if (await hasFileStoreUploadWithHash(fileStore, name, expectedHash)) {
 				return toUploadUrl(name);
 			}
 		}
 	} catch {
-		// readdir 异常时回退为直接写新文件，不影响主流程。
+		// 列目录失败时回退为直接写新文件
 	}
 	return null;
 }
+
+// ─── 工具函数 ────────────────────────────────────────────────
 
 function stripComments<T>(input: T): T {
 	if (Array.isArray(input)) {
@@ -359,30 +335,4 @@ function stripComments<T>(input: T): T {
 		return out as unknown as T;
 	}
 	return input;
-}
-
-function parseStructuredFile(raw: string, file: string): unknown {
-	if (getStructuredFileFormat(file) === "json") {
-		return JSON.parse(raw);
-	}
-	return parseYaml(raw);
-}
-
-function stringifyStructuredFile(value: unknown, file: string): string {
-	if (getStructuredFileFormat(file) === "json") {
-		return JSON.stringify(value, null, 2);
-	}
-	return stringifyYaml(value, { indent: 2, lineWidth: 0 });
-}
-
-function pruneLegacyStructuredFiles(baseName: string, keepFile: string) {
-	for (const file of listStructuredDataFileCandidates(baseName)) {
-		if (file === keepFile || !fs.existsSync(file)) continue;
-		try {
-			fs.unlinkSync(file);
-			structuredCache.delete(file);
-		} catch {
-			// 某些挂载目录可能不允许删除旧文件，不应影响主流程。
-		}
-	}
 }

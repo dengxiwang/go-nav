@@ -39,7 +39,7 @@ function isAllowedUpload(type: string, name: string) {
  */
 export async function POST(req: Request) {
 	const store = await cookies();
-	if (!verifySession(store.get(SESSION_COOKIE)?.value)) {
+	if (!await verifySession(store.get(SESSION_COOKIE)?.value)) {
 		return NextResponse.json({ error: "未登录" }, { status: 401 });
 	}
 	const contentType = req.headers.get("content-type") || "";
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 			);
 		}
 		const bytes = Buffer.from(await file.arrayBuffer());
-		const convertToWebp = readNav().imageUpload?.convertToWebp === true;
+		const convertToWebp = (await readNav()).imageUpload?.convertToWebp === true;
 		const url = await saveImageAsset(originalName, bytes, {
 			contentType: file.type,
 			forceWebp: convertToWebp,
