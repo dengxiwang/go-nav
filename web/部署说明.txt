@@ -5,5 +5,6 @@ Go Nav HTML 运行时配置版
 3. 访问 /admin/ 使用原版可视化后台，编辑后点击“导出配置”。
 4. 下载 nav.json 与 website.json 后，覆盖网站根目录同名文件。
 5. 图片请放入 uploads/，并在 JSON 中使用 /uploads/文件名。
-6. 必须通过 HTTP/HTTPS 访问，不能直接双击 index.html。
-7. 如果平台会缓存 JSON，请为 nav.json 和 website.json 设置 no-cache。
+6. 本地预览：macOS 双击“本地预览.command”，Windows 双击“本地预览.bat”。
+7. index.html 不能通过 file:// 直接读取配置；启动器会自动建立本地 HTTP 服务。
+8. 如果平台会缓存 JSON，请为 nav.json 和 website.json 设置 no-cache。

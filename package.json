@@ -10,6 +10,7 @@
     "build:server": "BUILD_MODE=server next build --webpack && node scripts/copy-standalone-assets.mjs",
     "build:static": "BUILD_MODE=static node scripts/sync-uploads.mjs && BUILD_MODE=static next build --webpack && node -e \"const fs=require('fs'),p=require('path');const d=p.join(process.cwd(),'public','uploads');if(fs.existsSync(d))fs.rmSync(d,{recursive:true,force:true});console.log('[build:static] 已清理 public/uploads/')\"",
     "build:html": "BUILD_MODE=html node scripts/sync-uploads.mjs && BUILD_MODE=html next build --webpack && BUILD_MODE=html node scripts/finalize-html-build.mjs",
+    "preview:html": "node scripts/html-preview-server.mjs web",
     "start": "node .next/standalone/server.js",
     "lint": "eslint",
     "docker:build": "sh scripts/docker-build.sh",

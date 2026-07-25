@@ -36,7 +36,7 @@ Go Nav 既可以作为带登录后台的 Node.js 应用运行，也可以打包�
 
 | 模式                 | 构建命令            | 产物                | 服务器需要 Node.js | 配置修改后需重新构建 | `/admin/`                             |
 | -------------------- | ------------------- | ------------------- | ------------------ | -------------------- | ------------------------------------- |
-| **HTML**（推荐分发） | `pnpm build:html`   | `web/`              | 否                 | 否                   | 免登录配置编辑器，导出 ZIP 后手动覆盖 |
+| **HTML** | `pnpm build:html`   | `web/`              | 否                 | 否                   | 免登录配置编辑器，导出 ZIP 后手动覆盖 |
 | **Server**           | `pnpm build:server` | `.next/standalone/` | 是                 | 否                   | 完整后台，可直接保存、上传和备份      |
 | **Static**           | `pnpm build:static` | `out/`              | 否                 | 是                   | 不提供                                |
 
@@ -207,18 +207,24 @@ server {
 
 ### 6. 本地预览
 
-不能直接双击 `index.html` 通过 `file://` 打开，必须使用 HTTP / HTTPS。可以用任意静态文件服务器预览，例如：
+构建完成后，macOS 可以双击 `web/本地预览.command`，Windows
+可以双击 `web/本地预览.bat`，单个 `.mjs` 可以跨平台，但通常必须执行 `node 本地预览.mjs`，不能可靠双击。启动器会自动建立本地 HTTP 服务并打开浏览器。
+
+也可以在项目目录中执行：
 
 ```bash
-python3 -m http.server 8080 --directory web
+pnpm preview:html
 ```
 
-然后访问：
+默认访问地址：
 
 ```text
-http://localhost:8080/
-http://localhost:8080/admin/
+http://127.0.0.1:4173/
+http://127.0.0.1:4173/admin/
 ```
+
+浏览器安全策略不允许 `file://` 页面读取旁边的 JSON，因此仍不能直接双击
+`index.html`；请双击随分发包生成的本地预览启动器。
 
 ### 7. 更新分发包
 
@@ -480,7 +486,9 @@ HTML 模式是纯静态网站，浏览器没有服务器文件系统写入权限
 
 ### 可以直接打开 `web/index.html` 吗？
 
-不可以。浏览器会限制 `file://` 页面读取 JSON，请使用 HTTP / HTTPS 静态服务器。
+浏览器会限制 `file://` 页面读取 JSON，因此不能直接双击 `index.html`。HTML
+分发包已附带本地预览启动器：macOS 双击 `本地预览.command`，Windows 双击
+`本地预览.bat`，即可自动打开网站。
 
 ### HTML 模式可以部署到子目录吗？
 

@@ -4,6 +4,7 @@
  * 完成 html 模式的可分发目录：
  * - 把 data/nav.* 与 data/website.* 统一转换为 web/*.json
  * - 写入常见静态托管平台可识别的缓存规则
+ * - 生成可双击启动的本地预览工具
  * - 清理构建时临时生成的 public/uploads
  */
 import fs from "node:fs";
@@ -19,6 +20,11 @@ const dataDir = process.env.DATA_DIR
 	? path.resolve(process.env.DATA_DIR)
 	: path.join(root, "data");
 const publicUploadsDir = path.join(root, "public", "uploads");
+const previewServerSource = path.join(
+	root,
+	"scripts",
+	"html-preview-server.mjs",
+);
 
 if (!fs.existsSync(path.join(outputDir, "index.html"))) {
 	throw new Error(`html 构建目录无效，未找到：${path.join(outputDir, "index.html")}`);
@@ -54,12 +60,15 @@ fs.writeFileSync(
 		"3. 访问 /admin/ 使用原版可视化后台，编辑后点击“导出配置”。",
 		"4. 下载 nav.json 与 website.json 后，覆盖网站根目录同名文件。",
 		"5. 图片请放入 uploads/，并在 JSON 中使用 /uploads/文件名。",
-		"6. 必须通过 HTTP/HTTPS 访问，不能直接双击 index.html。",
-		"7. 如果平台会缓存 JSON，请为 nav.json 和 website.json 设置 no-cache。",
+		"6. 本地预览：macOS 双击“本地预览.command”，Windows 双击“本地预览.bat”。",
+		"7. index.html 不能通过 file:// 直接读取配置；启动器会自动建立本地 HTTP 服务。",
+		"8. 如果平台会缓存 JSON，请为 nav.json 和 website.json 设置 no-cache。",
 		"",
 	].join("\n"),
 	"utf8",
 );
+
+writeLocalPreviewLaunchers();
 
 if (fs.existsSync(publicUploadsDir)) {
 	fs.rmSync(publicUploadsDir, { recursive: true, force: true });
@@ -67,6 +76,49 @@ if (fs.existsSync(publicUploadsDir)) {
 }
 
 console.log(`[build:html] ✔ 可分发静态文件已生成：${outputDir}`);
+
+function writeLocalPreviewLaunchers() {
+	const previewServerDestination = path.join(outputDir, "本地预览.mjs");
+	fs.copyFileSync(previewServerSource, previewServerDestination);
+
+	const macLauncher = path.join(outputDir, "本地预览.command");
+	fs.writeFileSync(
+		macLauncher,
+		[
+			"#!/bin/zsh",
+			'cd -- "${0:A:h}"',
+			'if ! command -v node >/dev/null 2>&1; then',
+			'\tosascript -e \'display dialog "未找到 Node.js，无法启动本地预览。" buttons {"确定"} default button "确定" with icon stop\'',
+			"\texit 1",
+			"fi",
+			'exec node "./本地预览.mjs" "."',
+			"",
+		].join("\n"),
+		"utf8",
+	);
+	fs.chmodSync(macLauncher, 0o755);
+
+	fs.writeFileSync(
+		path.join(outputDir, "本地预览.bat"),
+		[
+			"@echo off",
+			"chcp 65001 >nul",
+			'cd /d "%~dp0"',
+			"where node >nul 2>nul",
+			"if errorlevel 1 (",
+			"  echo 未找到 Node.js，无法启动本地预览。",
+			"  pause",
+			"  exit /b 1",
+			")",
+			'node "本地预览.mjs" "."',
+			"if errorlevel 1 pause",
+			"",
+		].join("\r\n"),
+		"utf8",
+	);
+
+	console.log("[build:html] ✔ 已生成本地双击预览工具");
+}
 
 function resolveStructuredFile(baseName) {
 	const preferYaml = (process.env.DATA_FILE_FORMAT || "").toLowerCase() === "yaml";
