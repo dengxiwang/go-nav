@@ -1,59 +1,59 @@
 "use client";
 
 import {
-	Button,
-	ListBox,
-	Separator,
-	Header,
-	Label,
-	Drawer,
-	Breadcrumbs,
-	type Selection,
-	Card,
-	toast,
-	Link,
-	useOverlayState,
+    Button,
+    ListBox,
+    Separator,
+    Header,
+    Label,
+    Drawer,
+    Breadcrumbs,
+    type Selection,
+    Card,
+    toast,
+    Link,
+    useOverlayState,
 } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import {
-	BiCog,
-	BiDownload,
-	BiGlobe,
-	BiGrid,
-	BiLogOut,
-	BiSave,
-	BiSearch,
-	BiStar,
-	BiShow,
-	BiMenu,
-	BiLayout,
-	BiPalette,
-	BiBookContent,
-	BiArchive,
-	BiCode,
-	BiDonateHeart,
-	BiImport,
-	BiFile,
-	BiListCheck,
-	BiImage,
-	BiSync,
-	BiMessageSquareAdd,
+    BiCog,
+    BiDownload,
+    BiGlobe,
+    BiGrid,
+    BiLogOut,
+    BiSave,
+    BiSearch,
+    BiStar,
+    BiShow,
+    BiMenu,
+    BiLayout,
+    BiPalette,
+    BiBookContent,
+    BiArchive,
+    BiCode,
+    BiDonateHeart,
+    BiImport,
+    BiFile,
+    BiListCheck,
+    BiImage,
+    BiSync,
+    BiMessageSquareAdd,
 } from "react-icons/bi";
 import {
-	applyImportAtom,
-	dirtyAtom,
-	navFieldAtom,
-	navAtom,
-	saveAtom,
-	savingAtom,
-	websiteDataAtom,
+    applyImportAtom,
+    dirtyAtom,
+    navFieldAtom,
+    navAtom,
+    saveAtom,
+    savingAtom,
+    websiteDataAtom,
 } from "@/lib/store/admin";
 import {
-	isHtmlDeployment,
-	readConfigZip,
+    isHtmlDeployment,
+    readConfigZip,
 } from "@/lib/client/html-admin";
 import { getIconImageSrc } from "@/lib/icon";
 import type { NavConfig, WebsiteData } from "@/types";
@@ -740,7 +740,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 						<div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
 							当前为纯静态配置后台。修改只保存在浏览器内存中；可导入之前导出的
 							ZIP，编辑后点击右上角“导出配置”，再将 ZIP 内的 nav.json 与
-							website.json 覆盖到网站根目录。
+							website.json 覆盖到网站根目录，不支持任何上传 / 获取等 api 行为。
 						</div>
 					) : null}
 					<Card className="rounded-xl border border-gray-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900">
