@@ -21,7 +21,6 @@ export function HeaderDrawerShell({
 	dialogClassName?: string;
 	}) {
 	return (
-		<Drawer>
 			<Drawer.Backdrop isOpen={open} onOpenChange={onOpenChange}>
 				<Drawer.Content placement={placement}>
 					<Drawer.Dialog
@@ -39,6 +38,5 @@ export function HeaderDrawerShell({
 					</Drawer.Dialog>
 				</Drawer.Content>
 			</Drawer.Backdrop>
-		</Drawer>
 	);
 }

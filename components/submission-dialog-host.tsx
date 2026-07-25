@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useAtomValue } from "jotai";
 import { submissionDialogOpenAtom } from "@/lib/store/site";
 
-export type SubmissionDeploymentMode = "server" | "static";
+export type SubmissionDeploymentMode = "server" | "static" | "html";
 
 const loadSubmissionDialog = () =>
 	import("./submission-dialog").then((mod) => mod.SubmissionDialog);

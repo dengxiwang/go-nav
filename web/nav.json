@@ -1,0 +1,123 @@
+{
+  "title": "Go Nav",
+  "name": "Go Nav",
+  "description": "简洁高效的网址导航站",
+  "keywords": [
+    "网址导航站",
+    "导航站",
+    "网址导航",
+    "个人导航"
+  ],
+  "logo": "/images/logo.svg",
+  "favicon": "/favicon.ico",
+  "author": "dengxiwang",
+  "copyright": "版权所有 © 2026 GOTAB. 保留所有权利",
+  "icp": "豫ICP备2023009053号-6",
+  "beian": "豫公网安备41072402001147号",
+  "qrCode": "https://www.gotab.cn/images/wx.webp",
+  "qrCodeText": "微信扫一扫",
+  "footerLinks": [
+    {
+      "label": "GOTAB 官网",
+      "href": "https://www.gotab.cn"
+    },
+    {
+      "label": "作者 GitHub",
+      "href": "https://github.com/dengxiwang/go-nav"
+    },
+    {
+      "label": " GoTab 新标签页",
+      "href": "https://web.gotab.cn"
+    },
+    {
+      "label": "博客",
+      "href": "https://blog.gotab.cn"
+    }
+  ],
+  "themeMode": "system",
+  "search": {
+    "defaultEngine": "local",
+    "enableLocalSearch": true,
+    "showEngineSelector": true,
+    "enableSuggestion": true,
+    "enableTabFocus": true,
+    "placeholder": "搜索网站或直接按 Enter 通过外部引擎搜索...",
+    "engines": [
+      {
+        "id": "baidu",
+        "name": "百度",
+        "icon": "/images/baidu.svg",
+        "url": "https://www.baidu.com/s?wd={query}&tn=68018901_11_oem_dg"
+      },
+      {
+        "id": "bing",
+        "name": "必应",
+        "icon": "/images/bing.svg",
+        "url": "https://www.bing.com/search?q={query}"
+      },
+      {
+        "id": "google",
+        "name": "谷歌",
+        "icon": "/images/google.svg",
+        "url": "https://www.google.com/search?q={query}"
+      }
+    ]
+  },
+  "ads": [
+    {
+      "id": "ad-1778577116508",
+      "title": "雨云服务器",
+      "description": "",
+      "image": "https://blog.gotab.cn/upload/rainyun_ad.webp",
+      "url": "https://www.rainyun.com/gotab_",
+      "enabled": true
+    },
+    {
+      "id": "ad-1784451057682",
+      "title": "云服务器首购优惠",
+      "description": "云服务器、云数据库、COS、CDN、短信等云产品特惠热卖中",
+      "image": "/uploads/home-ad-vjwbzt.png",
+      "url": "https://www.rainyun.com/gotab_",
+      "enabled": true,
+      "placement": "home-top"
+    },
+    {
+      "id": "ad-1784455424365",
+      "title": "必应搜索积分兑换福利",
+      "description": "欢迎使用 Microsoft Rewards，你可以在其中赚取积分、兑换礼品卡等",
+      "image": "/uploads/home-ad-h47yxm.png",
+      "url": "https://rewards.bing.com/welcome?rh=F4889091&ref=rafsrchae",
+      "enabled": true,
+      "placement": "home-top"
+    },
+    {
+      "id": "ad-1784455091300",
+      "title": "领券中心",
+      "description": "领取优惠券，购物更优惠！",
+      "image": "/uploads/home-ad-5ulsl3.png",
+      "url": "https://s.click.taobao.com/a0cbkBk",
+      "enabled": true,
+      "placement": "home-top"
+    }
+  ],
+  "plugins": [],
+  "layout": {
+    "maxWidth": "1400",
+    "showFooter": true,
+    "showFooterQrCode": true,
+    "showFloatingQrCode": true,
+    "showFloatingActions": true,
+    "defaultIconPadding": "8",
+    "linkTarget": "new"
+  },
+  "adsAspectRatio": "4/3",
+  "homeAdsAspectRatio": "16/9",
+  "submission": {
+    "enabled": true,
+    "showFloatingButton": true,
+    "showSidebarButton": true,
+    "staticEmail": "dengxiwang@aliyun.com"
+  },
+  "sidebarAdsEnabled": true,
+  "homeAdsEnabled": true
+}

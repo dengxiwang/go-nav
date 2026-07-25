@@ -444,7 +444,6 @@ export function PluginsEditor() {
 				</Table>
 			)}
 
-			<Drawer>
 				<Drawer.Backdrop
 					isOpen={editing !== null}
 					onOpenChange={(open) => !open && setEditing(null)}
@@ -482,9 +481,7 @@ export function PluginsEditor() {
 						</Drawer.Dialog>
 					</Drawer.Content>
 				</Drawer.Backdrop>
-			</Drawer>
 
-			<Modal>
 				<Modal.Backdrop
 					isOpen={deleteConfirm !== null}
 					onOpenChange={(open) => !open && setDeleteConfirm(null)}
@@ -518,7 +515,6 @@ export function PluginsEditor() {
 						</Modal.Dialog>
 					</Modal.Container>
 				</Modal.Backdrop>
-			</Modal>
 		</div>
 	);
 }

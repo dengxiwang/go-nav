@@ -231,7 +231,6 @@ export function AdsEditor() {
 				</Tabs.Panel>
 			</Tabs>
 
-			<Modal>
 				<Modal.Backdrop
 					isOpen={deleteConfirm !== null}
 					onOpenChange={(open) => !open && setDeleteConfirm(null)}
@@ -265,7 +264,6 @@ export function AdsEditor() {
 						</Modal.Dialog>
 					</Modal.Container>
 				</Modal.Backdrop>
-			</Modal>
 		</div>
 	);
 }

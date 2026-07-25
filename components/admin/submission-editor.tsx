@@ -39,6 +39,7 @@ import {
     navFieldAtom,
     syncDataWithoutDirtyAtom,
 } from "@/lib/store/admin";
+import { isHtmlDeployment } from "@/lib/client/html-admin";
 import { resolveSubmissionConfig } from "@/lib/submission";
 import { IconPicker } from "./icon-picker";
 
@@ -191,6 +192,10 @@ export function SubmissionEditor() {
 	};
 
 	const loadSubmissions = useCallback(async () => {
+		if (isHtmlDeployment) {
+			setLoading(false);
+			return;
+		}
 		setLoading(true);
 		try {
 			const response = await fetch("/api/submissions/", { cache: "no-store" });
@@ -408,7 +413,17 @@ export function SubmissionEditor() {
 				</div>
 			</section>
 
-			<section className="flex flex-col gap-4 border-t border-gray-100 pt-4 dark:border-neutral-800">
+			{isHtmlDeployment ? (
+				<div className="rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-xs leading-5 text-warning-soft-foreground">
+					纯静态部署没有服务端投稿审核队列；这里保留投稿入口和接收邮箱配置，访客投稿时会打开邮件客户端。
+				</div>
+			) : null}
+
+			<section
+				className={`flex flex-col gap-4 border-t border-gray-100 pt-4 dark:border-neutral-800 ${
+					isHtmlDeployment ? "hidden" : ""
+				}`}
+			>
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<div>
 						<h3 className="text-base font-semibold">投稿审核</h3>
@@ -663,7 +678,6 @@ export function SubmissionEditor() {
 				</Table>
 			</section>
 
-			<Modal>
 				<Modal.Backdrop
 					isOpen={reviewing !== null}
 					isDismissable={!reviewPending}
@@ -821,7 +835,6 @@ export function SubmissionEditor() {
 						</Modal.Dialog>
 					</Modal.Container>
 				</Modal.Backdrop>
-			</Modal>
 		</div>
 	);
 }

@@ -1,0 +1,9 @@
+Go Nav HTML 运行时配置版
+
+1. 请把本目录中的全部文件上传到网站根目录。
+2. 后续直接修改 nav.json 或 website.json，刷新网页即可生效。
+3. 访问 /admin/ 使用原版可视化后台，编辑后点击“导出配置”。
+4. 下载 nav.json 与 website.json 后，覆盖网站根目录同名文件。
+5. 图片请放入 uploads/，并在 JSON 中使用 /uploads/文件名。
+6. 必须通过 HTTP/HTTPS 访问，不能直接双击 index.html。
+7. 如果平台会缓存 JSON，请为 nav.json 和 website.json 设置 no-cache。

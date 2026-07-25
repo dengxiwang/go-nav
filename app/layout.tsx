@@ -4,12 +4,22 @@ import { getNav } from "@/lib/config";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppToastProvider } from "@/components/app-toast-provider";
 
+const isHtmlDeployment =
+	(process.env.BUILD_MODE || "server").toLowerCase() === "html";
+
 export const viewport: Viewport = {
 	width: "device-width",
 	initialScale: 1,
 };
 
 export function generateMetadata(): Metadata {
+	if (isHtmlDeployment) {
+		return {
+			title: "Go Nav",
+			description: "Go Nav HTML runtime configuration",
+		};
+	}
+
 	const nav = getNav();
 	const other: Metadata["other"] = {};
 	if (nav.copyright) {
@@ -59,8 +69,9 @@ export default function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const nav = getNav();
-	const themeMode = nav.themeMode ?? "light";
+	const themeMode = isHtmlDeployment
+		? "system"
+		: (getNav().themeMode ?? "light");
 	return (
 		<html lang="zh-CN" className="h-full antialiased" suppressHydrationWarning>
 			<head>

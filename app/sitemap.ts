@@ -6,15 +6,8 @@ export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
 	const origin = resolveSiteOrigin();
-	const nav = getNav();
-	const detailEnabled = nav.layout?.enableSiteDetailPage === true;
-	const websiteData = getWebsiteData();
-	const detailEntries = detailEnabled
-		? collectSiteDetailEntries(websiteData.categories)
-		: [];
 	const now = new Date();
-
-	const urls: MetadataRoute.Sitemap = [
+	const home: MetadataRoute.Sitemap = [
 		{
 			url: `${origin}/`,
 			lastModified: now,
@@ -22,6 +15,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
 			priority: 1,
 		},
 	];
+
+	// html 模式的数据由浏览器运行时读取，构建阶段只能稳定生成首页条目。
+	if ((process.env.BUILD_MODE || "server").toLowerCase() === "html") {
+		return home;
+	}
+
+	const nav = getNav();
+	const detailEnabled = nav.layout?.enableSiteDetailPage === true;
+	const websiteData = getWebsiteData();
+	const detailEntries = detailEnabled
+		? collectSiteDetailEntries(websiteData.categories)
+		: [];
+	const urls = home;
 
 	for (const entry of detailEntries) {
 		urls.push({

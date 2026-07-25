@@ -1,5 +1,5 @@
 "use client";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { HeaderBundle } from "./header-bundle";
 import { AppSidebar } from "./app-sidebar";
@@ -50,6 +50,7 @@ export function AppLayout({
 	deploymentMode: SubmissionDeploymentMode;
 }) {
 	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const layout = useAtomValue(layoutAtom);
 	const categories = useAtomValue(categoriesAtom);
 	const homeAds = useAtomValue(homeAdsAtom);
@@ -90,6 +91,8 @@ export function AppLayout({
 			pathname,
 			categories,
 			detailEnabled: layout.enableSiteDetailPage,
+			detailSlugOverride:
+				deploymentMode === "html" ? searchParams.get("site") : null,
 			setActiveId,
 		});
 	const hasDesktopSidebar = layout.showSidebar && displayCategories.length > 0;

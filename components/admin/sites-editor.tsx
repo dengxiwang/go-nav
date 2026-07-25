@@ -1,64 +1,64 @@
 "use client";
 
 import {
-	Button,
-	Chip,
-	Input,
-	InputGroup,
-	Label,
-	Link,
-	Modal,
-	TextField,
-	Table,
-	AlertDialog,
-	toast,
-	Drawer,
-	cn,
-	useOverlayState,
+    Button,
+    Chip,
+    Input,
+    InputGroup,
+    Label,
+    Link,
+    Modal,
+    TextField,
+    Table,
+    AlertDialog,
+    toast,
+    Drawer,
+    cn,
+    useOverlayState,
 } from "@heroui/react";
 import {
-	DndContext,
-	DragOverlay,
-	KeyboardSensor,
-	MeasuringStrategy,
-	PointerSensor,
-	TouchSensor,
-	closestCenter,
-	pointerWithin,
-	useDroppable,
-	useSensor,
-	useSensors,
+    DndContext,
+    DragOverlay,
+    KeyboardSensor,
+    MeasuringStrategy,
+    PointerSensor,
+    TouchSensor,
+    closestCenter,
+    pointerWithin,
+    useDroppable,
+    useSensor,
+    useSensors,
 } from "@dnd-kit/core";
 import type {
-	CollisionDetection,
-	DragEndEvent,
-	DragOverEvent,
-	DragStartEvent,
+    CollisionDetection,
+    DragEndEvent,
+    DragMoveEvent,
+    DragStartEvent,
 } from "@dnd-kit/core";
 import {
-	SortableContext,
-	arrayMove,
-	sortableKeyboardCoordinates,
-	useSortable,
-	verticalListSortingStrategy,
+    SortableContext,
+    arrayMove,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
 import {
-	BiPencil,
-	BiTrash,
-	BiSearch,
-	BiChevronRight,
-	BiX,
-	BiMenu,
-	BiPlus,
-	BiChevronUp,
-	BiChevronDown,
-	BiGlobe,
-	BiDotsVerticalRounded,
-	BiImage,
+    BiPencil,
+    BiTrash,
+    BiSearch,
+    BiChevronRight,
+    BiX,
+    BiMenu,
+    BiPlus,
+    BiChevronUp,
+    BiChevronDown,
+    BiGlobe,
+    BiDotsVerticalRounded,
+    BiImage,
 } from "react-icons/bi";
 import type { NavCategory, WebsiteData, NavSite } from "@/types";
 import { useAtom, useAtomValue } from "jotai";
@@ -68,9 +68,9 @@ import { getPreferredSiteHref } from "@/lib/client/site-link";
 import { getIconImageSrc } from "@/lib/icon";
 import { IconPicker } from "./icon-picker";
 import {
-	resolveConfiguredValue,
-	resolveSiteBackgroundColor,
-	toPx,
+    resolveConfiguredValue,
+    resolveSiteBackgroundColor,
+    toPx,
 } from "../site-icon";
 import Loading from "./loading";
 
@@ -127,9 +127,48 @@ const getSiteSortableId = (categoryId: string, index: number) =>
 const getCategoryDropId = (scope: string, categoryId: string) =>
 	`site-category:${scope}:${categoryId}`;
 
-const pointerWithinOrClosestCenter: CollisionDetection = (args) => {
+const siteAwareCollisionDetection: CollisionDetection = (args) => {
 	const pointerCollisions = pointerWithin(args);
-	return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(args);
+	const categoryCollisions = pointerCollisions.filter((collision) => {
+		const data = collision.data?.droppableContainer.data.current as
+			| CategoryDropData
+			| undefined;
+		return data?.type === "category-drop";
+	});
+	if (categoryCollisions.length > 0) return categoryCollisions;
+
+	const directSiteCollisions = pointerCollisions.filter((collision) => {
+		const data = collision.data?.droppableContainer.data.current as
+			| SiteDragData
+			| undefined;
+		return data?.type === "site";
+	});
+	if (directSiteCollisions.length > 0) return directSiteCollisions;
+
+	const pointer = args.pointerCoordinates;
+	if (!pointer) return closestCenter(args);
+
+	const siteContainers = args.droppableContainers.filter((container) => {
+		const data = container.data.current as SiteDragData | undefined;
+		return data?.type === "site";
+	});
+	const isPointerNearSiteList = siteContainers.some((container) => {
+		const rect = args.droppableRects.get(container.id);
+		if (!rect) return false;
+		return (
+			pointer.x >= rect.left &&
+			pointer.x <= rect.right &&
+			pointer.y >= rect.top - 24 &&
+			pointer.y <= rect.bottom + 24
+		);
+	});
+
+	if (!isPointerNearSiteList) return [];
+
+	return closestCenter({
+		...args,
+		droppableContainers: siteContainers,
+	});
 };
 
 interface SiteDragData {
@@ -144,6 +183,29 @@ interface CategoryDropData {
 	categoryId: string;
 }
 
+function getClientPoint(event: Event) {
+	if (event instanceof MouseEvent) {
+		return { x: event.clientX, y: event.clientY };
+	}
+	if (event instanceof TouchEvent) {
+		const touch = event.touches[0] ?? event.changedTouches[0];
+		return touch ? { x: touch.clientX, y: touch.clientY } : null;
+	}
+	return null;
+}
+
+function isPointInsideRect(
+	point: { x: number; y: number },
+	rect: DOMRect,
+) {
+	return (
+		point.x >= rect.left &&
+		point.x <= rect.right &&
+		point.y >= rect.top &&
+		point.y <= rect.bottom
+	);
+}
+
 function SortableSiteRow({
 	id,
 	site,
@@ -156,6 +218,7 @@ function SortableSiteRow({
 	defaultIconPadding,
 	autoUseIntranet,
 	registerRowElement,
+	isPointerOverSiteTable,
 }: {
 	id: string;
 	site: NavSite;
@@ -168,8 +231,9 @@ function SortableSiteRow({
 	defaultIconPadding?: string;
 	autoUseIntranet?: boolean;
 	registerRowElement: (id: string, el: HTMLElement | null) => void;
+	isPointerOverSiteTable: boolean;
 }) {
-	const { attributes, listeners, setNodeRef, transform, isDragging } =
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
 		useSortable({
 			id,
 			data: {
@@ -178,12 +242,16 @@ function SortableSiteRow({
 				sourceIndex: realIndex,
 				site,
 			} satisfies SiteDragData,
+			animateLayoutChanges: ({ isSorting }) => isSorting,
+			transition: {
+				duration: 160,
+				easing: "cubic-bezier(0.2, 0, 0, 1)",
+			},
 		});
 
 	const style: React.CSSProperties = {
 		transform: CSS.Transform.toString(transform),
-		transition: undefined,
-		opacity: isDragging ? 0.45 : 1,
+		transition: isDragging ? undefined : transition,
 		position: "relative",
 		zIndex: isDragging ? 1 : undefined,
 	};
@@ -191,6 +259,7 @@ function SortableSiteRow({
 	const resolvedHref = getPreferredSiteHref(site, { autoUseIntranet });
 	const getResolvedIconPadding = (s?: NavSite | null) =>
 		resolveConfiguredValue(s?.iconPadding, defaultIconPadding);
+	const showSortPlaceholder = isDragging && isPointerOverSiteTable;
 
 	return (
 		<Table.Row
@@ -200,9 +269,18 @@ function SortableSiteRow({
 			}}
 			style={style}
 			id={id}
+			className={cn(
+				showSortPlaceholder && "rounded-xl [&>td>*]:invisible",
+				isDragging && !isPointerOverSiteTable && "opacity-20",
+			)}
 			textValue={site.title}
 		>
 			<Table.Cell>
+				{showSortPlaceholder ? (
+					<span className="visible! pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#3b82f6] bg-[rgba(37,99,235,0.18)] text-xs font-semibold text-[#60a5fa]">
+						放到这里
+					</span>
+				) : null}
 				<div
 					className="flex h-8 w-8 items-center justify-center rounded-lg"
 					style={{
@@ -236,7 +314,7 @@ function SortableSiteRow({
 						aria-label="拖拽排序"
 						variant="ghost"
 						isIconOnly
-						className={"w-6! h-6!"}
+						className="h-6! w-6! touch-none cursor-grab active:cursor-grabbing"
 					>
 						<BiDotsVerticalRounded className="size-4" />
 					</Button>
@@ -384,7 +462,6 @@ function DroppableCategoryButton({
 	flatCategories,
 	renderTreeItem,
 	dropScope,
-	isDragOverCategory,
 }: {
 	cat: FlatCategory;
 	isExpanded: boolean;
@@ -396,7 +473,6 @@ function DroppableCategoryButton({
 	flatCategories: FlatCategory[];
 	renderTreeItem: (cat: FlatCategory, dropScope: string) => React.ReactNode;
 	dropScope: string;
-	isDragOverCategory: boolean;
 }) {
 	const { setNodeRef, isOver } = useDroppable({
 		id: getCategoryDropId(dropScope, cat.id),
@@ -406,7 +482,7 @@ function DroppableCategoryButton({
 			categoryId: cat.id,
 		} satisfies CategoryDropData,
 	});
-	const showHighlight = isLeaf && (isOver || isDragOverCategory);
+	const showHighlight = isLeaf && isOver;
 	const children = flatCategories.filter(
 		(c) =>
 			c.path.length === cat.path.length + 1 &&
@@ -427,14 +503,17 @@ function DroppableCategoryButton({
 					}
 				}}
 				className={cn(
-					"flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-all",
+					"relative flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-lg px-3 py-2 text-left text-sm transition-all",
 					isSelected
 						? "bg-blue-50 font-medium text-blue-600 dark:bg-blue-950/40 dark:text-blue-300"
 						: "hover:bg-default/50",
-					showHighlight &&
-						"bg-blue-50 ring-2 ring-blue-400 ring-offset-1 dark:bg-blue-950/40",
 				)}
 			>
+				{showHighlight ? (
+					<span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#3b82f6] bg-[rgba(37,99,235,0.18)] text-xs font-semibold text-[#60a5fa]">
+						放到这里
+					</span>
+				) : null}
 				<span className="inline-flex w-5 shrink-0 items-center justify-center">
 					{cat.hasChildren ? (
 						<BiChevronRight
@@ -633,18 +712,15 @@ export function SitesEditor() {
 		}
 		rowElementMapRef.current.set(id, el);
 	};
-	const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(
-		null,
-	);
+	const siteTableRegionRef = useRef<HTMLDivElement>(null);
+	const dragPointerOriginRef = useRef<{ x: number; y: number } | null>(null);
+	const [isPointerOverSiteTable, setIsPointerOverSiteTable] = useState(false);
 	const sensors = useSensors(
 		useSensor(PointerSensor, {
 			activationConstraint: { distance: 6 },
 		}),
 		useSensor(TouchSensor, {
-			activationConstraint: {
-				delay: 120,
-				tolerance: 8,
-			},
+			activationConstraint: { distance: 4 },
 		}),
 		useSensor(KeyboardSensor, {
 			coordinateGetter: sortableKeyboardCoordinates,
@@ -829,19 +905,26 @@ export function SitesEditor() {
 		);
 	};
 
-	const handleSiteDragOver = (event: DragOverEvent) => {
-		const data = event.over?.data.current as
-			| SiteDragData
-			| CategoryDropData
-			| undefined;
-		if (data?.type === "category-drop") {
-			setDragOverCategoryId(data.categoryId);
-			return;
-		}
-		setDragOverCategoryId(null);
+	const updatePointerOverSiteTable = (point: { x: number; y: number }) => {
+		const tableRect = siteTableRegionRef.current?.getBoundingClientRect();
+		const nextIsPointerOverSiteTable = tableRect
+			? isPointInsideRect(point, tableRect)
+			: false;
+		setIsPointerOverSiteTable((previous) =>
+			previous === nextIsPointerOverSiteTable
+				? previous
+				: nextIsPointerOverSiteTable,
+		);
 	};
 
 	const handleSiteDragStart = (event: DragStartEvent) => {
+		const pointerOrigin = getClientPoint(event.activatorEvent);
+		dragPointerOriginRef.current = pointerOrigin;
+		if (pointerOrigin) {
+			updatePointerOverSiteTable(pointerOrigin);
+		} else {
+			setIsPointerOverSiteTable(true);
+		}
 		const data = event.active.data.current;
 		if (data?.type === "site") {
 			setActiveSite((data as SiteDragData).site);
@@ -862,10 +945,20 @@ export function SitesEditor() {
 		setActiveRowSnapshot(null);
 	};
 
+	const handleSiteDragMove = (event: DragMoveEvent) => {
+		const pointerOrigin = dragPointerOriginRef.current;
+		if (!pointerOrigin) return;
+		updatePointerOverSiteTable({
+			x: pointerOrigin.x + event.delta.x,
+			y: pointerOrigin.y + event.delta.y,
+		});
+	};
+
 	const handleSiteDragEnd = (event: DragEndEvent) => {
 		setActiveSite(null);
 		setActiveRowSnapshot(null);
-		setDragOverCategoryId(null);
+		dragPointerOriginRef.current = null;
+		setIsPointerOverSiteTable(false);
 
 		const activeData = event.active.data.current as SiteDragData | undefined;
 		const overData = event.over?.data.current as
@@ -1156,7 +1249,6 @@ export function SitesEditor() {
 				flatCategories={flatCategories}
 				renderTreeItem={renderTreeItem}
 				dropScope={dropScope}
-				isDragOverCategory={dragOverCategoryId === cat.id}
 			/>
 		);
 	};
@@ -1182,19 +1274,20 @@ export function SitesEditor() {
 	return (
 		<DndContext
 			sensors={sensors}
-			collisionDetection={pointerWithinOrClosestCenter}
+			collisionDetection={siteAwareCollisionDetection}
 			measuring={{
 				droppable: {
-					strategy: MeasuringStrategy.Always,
+					strategy: MeasuringStrategy.WhileDragging,
 				},
 			}}
-			onDragOver={handleSiteDragOver}
+			onDragMove={handleSiteDragMove}
 			onDragStart={handleSiteDragStart}
 			onDragEnd={handleSiteDragEnd}
 			onDragCancel={() => {
 				setActiveSite(null);
 				setActiveRowSnapshot(null);
-				setDragOverCategoryId(null);
+				dragPointerOriginRef.current = null;
+				setIsPointerOverSiteTable(false);
 			}}
 		>
 			<div className="flex h-[calc(100vh-106px)] flex-col gap-4">
@@ -1271,7 +1364,7 @@ export function SitesEditor() {
 									</div>
 								</div>
 
-								<div>
+								<div ref={siteTableRegionRef}>
 									{filteredSites.length === 0 ? (
 										<div className="flex h-64 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
 											<p className="text-sm text-default-500">
@@ -1291,7 +1384,7 @@ export function SitesEditor() {
 														<Table.Header>
 															<Table.Column className="w-12">图标</Table.Column>
 															<Table.Column
-																className="min-w-28 sm:min-w-44"
+																className="min-w-36 sm:min-w-44"
 																isRowHeader
 															>
 																名称
@@ -1340,6 +1433,9 @@ export function SitesEditor() {
 																		defaultIconPadding={defaultIconPadding}
 																		autoUseIntranet={autoUseIntranet}
 																		registerRowElement={registerRowElement}
+																		isPointerOverSiteTable={
+																			isPointerOverSiteTable
+																		}
 																	/>
 																);
 															})}
@@ -1355,7 +1451,6 @@ export function SitesEditor() {
 					</div>
 				</div>
 
-				<Drawer>
 					<Drawer.Backdrop
 						isOpen={mobileDrawerState.isOpen}
 						onOpenChange={mobileDrawerState.setOpen}
@@ -1381,9 +1476,7 @@ export function SitesEditor() {
 							</Drawer.Dialog>
 						</Drawer.Content>
 					</Drawer.Backdrop>
-				</Drawer>
 
-				<Modal>
 					<Modal.Backdrop
 						isOpen={isModalOpen}
 						onOpenChange={(open) => !open && setIsModalOpen(false)}
@@ -1540,9 +1633,7 @@ export function SitesEditor() {
 							</Modal.Dialog>
 						</Modal.Container>
 					</Modal.Backdrop>
-				</Modal>
 
-				<AlertDialog>
 					<AlertDialog.Backdrop
 						isOpen={deleteTarget !== null}
 						onOpenChange={(open) => !open && setDeleteTarget(null)}
@@ -1580,7 +1671,6 @@ export function SitesEditor() {
 							</AlertDialog.Dialog>
 						</AlertDialog.Container>
 					</AlertDialog.Backdrop>
-				</AlertDialog>
 			</div>
 			{createPortal(
 				<DragOverlay dropAnimation={null}>

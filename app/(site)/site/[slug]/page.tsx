@@ -10,8 +10,14 @@ interface SiteDetailRouteProps {
 }
 
 const STATIC_PLACEHOLDER_SLUG = "__placeholder__";
+const isHtmlDeployment =
+	(process.env.BUILD_MODE || "server").toLowerCase() === "html";
 
 export function generateStaticParams() {
+	if (isHtmlDeployment) {
+		return [{ slug: STATIC_PLACEHOLDER_SLUG }];
+	}
+
 	const nav = getNav();
 	const websiteData = getWebsiteData();
 	const entries = collectSiteDetailEntries(websiteData.categories);
@@ -29,6 +35,10 @@ export function generateStaticParams() {
 
 export default async function SiteDetailRoute(props: SiteDetailRouteProps) {
 	const { slug } = await props.params;
+	if (isHtmlDeployment) {
+		notFound();
+	}
+
 	const nav = getNav();
 	const detailEnabled = nav.layout?.enableSiteDetailPage === true;
 	if (!detailEnabled || slug === STATIC_PLACEHOLDER_SLUG) {

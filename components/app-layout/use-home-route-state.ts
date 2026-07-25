@@ -24,11 +24,13 @@ export function useHomeRouteState({
 	pathname,
 	categories,
 	detailEnabled,
+	detailSlugOverride,
 	setActiveId,
 }: {
 	pathname: string;
 	categories: NavCategory[];
 	detailEnabled: boolean;
+	detailSlugOverride?: string | null;
 	setActiveId: (value: SetStateAction<string | undefined>) => void;
 }) {
 	const [disableRecentVisitsEntrance, setDisableRecentVisitsEntrance] =
@@ -36,6 +38,7 @@ export function useHomeRouteState({
 	const restoredFromDetailRef = useRef(false);
 
 	const detailSlug = useMemo(() => {
+		if (detailSlugOverride) return detailSlugOverride;
 		if (!pathname.startsWith("/site/")) return null;
 		const rawSlug = pathname.slice("/site/".length).split("/")[0];
 		if (!rawSlug) return null;
@@ -44,9 +47,10 @@ export function useHomeRouteState({
 		} catch {
 			return rawSlug;
 		}
-	}, [pathname]);
+	}, [detailSlugOverride, pathname]);
 
 	const isDetailRoute = detailSlug !== null;
+	const isHomeRoute = pathname === "/" && !isDetailRoute;
 	const detailEntries = useMemo(
 		() => collectSiteDetailEntries(categories),
 		[categories],
@@ -62,7 +66,7 @@ export function useHomeRouteState({
 	}, [isDetailRoute, pathname]);
 
 	useEffect(() => {
-		if (pathname !== "/") return;
+		if (!isHomeRoute) return;
 
 		const shouldRestore = consumeHomeRestoreRequest();
 		if (!shouldRestore) {
@@ -97,10 +101,10 @@ export function useHomeRouteState({
 				window.clearTimeout(timer);
 			}
 		};
-	}, [pathname, setActiveId]);
+	}, [isHomeRoute, setActiveId]);
 
 	useLayoutEffect(() => {
-		if (pathname !== "/") return;
+		if (!isHomeRoute) return;
 		if (restoredFromDetailRef.current) return;
 
 		const navEntry = performance.getEntriesByType("navigation")[0] as
@@ -113,13 +117,13 @@ export function useHomeRouteState({
 		if (firstParentId) {
 			setActiveId((prev) => (prev === firstParentId ? prev : firstParentId));
 		}
-	}, [categories, pathname, setActiveId]);
+	}, [categories, isHomeRoute, setActiveId]);
 
 	useEffect(() => {
-		if (pathname !== "/") {
+		if (!isHomeRoute) {
 			setDisableRecentVisitsEntrance(false);
 		}
-	}, [pathname]);
+	}, [isHomeRoute]);
 
 	return {
 		disableRecentVisitsEntrance,
