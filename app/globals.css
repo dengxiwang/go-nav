@@ -82,6 +82,12 @@ svg:not([height]) {
 	height: 1rem;
 }
 
+/* HeroUI Spinner 的内部 SVG 应跟随组件的 size 变体，避免被上面的图标默认尺寸压缩。 */
+.spinner > svg[data-slot="spinner-icon"] {
+	width: 100%;
+	height: 100%;
+}
+
 .link__icon {
 	padding: 0rem;
 }

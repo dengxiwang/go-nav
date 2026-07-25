@@ -10,6 +10,7 @@ const eslintConfig = defineConfig([
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
+    "web/**",
     "build/**",
     "next-env.d.ts",
     ".heroui-docs/**",

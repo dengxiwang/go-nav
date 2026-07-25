@@ -694,7 +694,6 @@ export function ExternalImportEditor() {
 				</div>
 			</div>
 
-			<Drawer>
 				<Drawer.Backdrop
 					isOpen={mobileDrawerState.isOpen}
 					onOpenChange={mobileDrawerState.setOpen}
@@ -720,7 +719,6 @@ export function ExternalImportEditor() {
 						</Drawer.Dialog>
 					</Drawer.Content>
 				</Drawer.Backdrop>
-			</Drawer>
 		</div>
 	);
 }

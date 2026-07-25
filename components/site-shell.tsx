@@ -1,11 +1,17 @@
+import { Suspense } from "react";
 import type { PluginConfig } from "@/types";
 import { AppLayout } from "@/components/app-layout";
+import { RuntimeSiteShell } from "@/components/runtime-site-shell";
 import { SiteHeadInsertions } from "@/components/site-head-insertions";
 import { SiteStoreProvider } from "@/lib/store/hydrate";
 import { getNav, getWebsiteData } from "@/lib/config";
 import { pluginHasRenderablePayload } from "@/lib/plugin-config";
 
 export function SiteShell() {
+	if ((process.env.BUILD_MODE || "server").toLowerCase() === "html") {
+		return <RuntimeSiteShell />;
+	}
+
 	const websiteData = getWebsiteData();
 	const nav = getNav();
 	const plugins = (nav.plugins ?? [])
@@ -25,7 +31,9 @@ export function SiteShell() {
 	return (
 		<SiteStoreProvider initial={{ websiteData, nav }}>
 			<SiteHeadInsertions plugins={headPlugins} />
-			<AppLayout deploymentMode={deploymentMode} />
+			<Suspense fallback={null}>
+				<AppLayout deploymentMode={deploymentMode} />
+			</Suspense>
 			{footerPlugins.map((p) => (
 				<PluginScript key={p.id} plugin={p} />
 			))}

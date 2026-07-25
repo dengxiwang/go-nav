@@ -64,7 +64,7 @@ export function SubmissionDialog({
 	const [isOpen, setIsOpen] = useAtom(submissionDialogOpenAtom);
 	const [form, setForm] = useState<SubmissionInput>(EMPTY_FORM);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const isStatic = deploymentMode === "static";
+	const isStatic = deploymentMode !== "server";
 
 	const patch = (value: Partial<SubmissionInput>) => {
 		setForm((current) => ({ ...current, ...value }));
@@ -119,7 +119,6 @@ export function SubmissionDialog({
 	};
 
 	return (
-		<Modal>
 			<Modal.Backdrop
 				isOpen={isOpen && config.enabled}
 				isDismissable={!isSubmitting}
@@ -295,6 +294,5 @@ export function SubmissionDialog({
 					</Modal.Dialog>
 				</Modal.Container>
 			</Modal.Backdrop>
-		</Modal>
 	);
 }

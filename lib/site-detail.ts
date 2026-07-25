@@ -26,7 +26,11 @@ export function buildSiteDetailSlug(
 export function buildSiteDetailPath(
 	site: Pick<NavSite, "id" | "title" | "url">,
 ): string {
-	return `${SITE_DETAIL_BASE_PATH}/${buildSiteDetailSlug(site)}`;
+	const slug = buildSiteDetailSlug(site);
+	if (process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "html") {
+		return `/?site=${encodeURIComponent(slug)}`;
+	}
+	return `${SITE_DETAIL_BASE_PATH}/${slug}`;
 }
 
 export function collectSiteDetailEntries(
@@ -45,7 +49,7 @@ export function collectSiteDetailEntries(
 					seen.add(slug);
 					list.push({
 						slug,
-						path: `${SITE_DETAIL_BASE_PATH}/${slug}`,
+						path: buildSiteDetailPath(site),
 						site,
 						categoryId: node.id,
 						categoryName: node.name,

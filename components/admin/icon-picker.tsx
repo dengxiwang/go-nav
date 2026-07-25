@@ -19,6 +19,7 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { getIconImageSrc } from "@/lib/icon";
 import { uploadImageWithCompression } from "@/lib/client/image-upload";
+import { isHtmlDeployment } from "@/lib/client/html-admin";
 import { navAtom } from "@/lib/store/admin";
 import { resolveConfiguredValue, toPx } from "../site-icon";
 
@@ -150,17 +151,22 @@ export function IconPicker({
 					onChange={onChange}
 				>
 					<Label className="sr-only">图标</Label>
-					<Input placeholder={placeholder} onPaste={onPasteImage} />
+					<Input
+						placeholder={placeholder}
+						onPaste={isHtmlDeployment ? undefined : onPasteImage}
+					/>
 				</TextField>
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					isDisabled={isDisabled || uploading}
-					onPress={() => fileRef.current?.click()}
-				>
-					{uploading ? "上传中..." : "上传"}
-				</Button>
+				{!isHtmlDeployment ? (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						isDisabled={isDisabled || uploading}
+						onPress={() => fileRef.current?.click()}
+					>
+						{uploading ? "上传中..." : "上传"}
+					</Button>
+				) : null}
 				{onIconPaddingChange && (
 					<TextField
 						className="flex flex-row items-center"
@@ -239,14 +245,16 @@ export function IconPicker({
 						</ColorPicker.Popover>
 					</ColorPicker>
 				)}
-				<input
-					ref={fileRef}
-					type="file"
-					accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon,.ico,.svg"
-					className="hidden"
-					disabled={isDisabled}
-					onChange={onFileChosen}
-				/>
+				{!isHtmlDeployment ? (
+					<input
+						ref={fileRef}
+						type="file"
+						accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon,.ico,.svg"
+						className="hidden"
+						disabled={isDisabled}
+						onChange={onFileChosen}
+					/>
+				) : null}
 			</div>
 		</div>
 	);

@@ -8,6 +8,10 @@
  */
 import { atom } from "jotai";
 import { atomFamily } from "jotai-family";
+import {
+	downloadConfigZip,
+	isHtmlDeployment,
+} from "@/lib/client/html-admin";
 import type {
     AdConfig,
     NavCategory,
@@ -244,6 +248,12 @@ export const saveAtom = atom(null, async (get, set) => {
 	if (get(savingAtom)) return { ok: false as const, error: "" };
 	set(savingAtom, true);
 	try {
+		if (isHtmlDeployment) {
+			downloadConfigZip(get(navAtom), get(websiteDataAtom));
+			set(dirtyAtom, false);
+			return { ok: true as const, exported: true as const };
+		}
+
 		const body = JSON.stringify({
 			websiteData: get(websiteDataAtom),
 			nav: get(navAtom),
@@ -269,7 +279,7 @@ export const saveAtom = atom(null, async (get, set) => {
 		const d = (await res.json().catch(() => ({}))) as { revision?: string };
 		if (d.revision) set(configRevisionAtom, d.revision);
 		set(dirtyAtom, false);
-		return { ok: true as const };
+		return { ok: true as const, exported: false as const };
 	} catch (e) {
 		return { ok: false as const, error: (e as Error).message };
 	} finally {

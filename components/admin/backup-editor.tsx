@@ -334,7 +334,6 @@ export function BackupEditor() {
 			</section>
 
 			{/* 清理预览确认弹窗 */}
-			<Modal>
 				<Modal.Backdrop
 					isOpen={preview !== null}
 					onOpenChange={(open) => !open && !cleaning && setPreview(null)}
@@ -397,7 +396,6 @@ export function BackupEditor() {
 						</Modal.Dialog>
 					</Modal.Container>
 				</Modal.Backdrop>
-			</Modal>
 
 			{/* 注意事项 */}
 			<div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">

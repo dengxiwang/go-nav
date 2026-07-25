@@ -16,9 +16,11 @@ import {
 } from "@heroui/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import {
 	BiCog,
+	BiDownload,
 	BiGlobe,
 	BiGrid,
 	BiLogOut,
@@ -44,9 +46,15 @@ import {
 	applyImportAtom,
 	dirtyAtom,
 	navFieldAtom,
+	navAtom,
 	saveAtom,
 	savingAtom,
+	websiteDataAtom,
 } from "@/lib/store/admin";
+import {
+	isHtmlDeployment,
+	readConfigZip,
+} from "@/lib/client/html-admin";
 import { getIconImageSrc } from "@/lib/icon";
 import type { NavConfig, WebsiteData } from "@/types";
 import { AdminScrollTopButton } from "./scroll-top-button";
@@ -208,6 +216,19 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 ];
 
 const ALL_ITEMS = NAV_SECTIONS.flatMap((s) => s.items);
+const HTML_ROUTE_KEYS = new Set<RouteKey>([
+	"categories",
+	"sites",
+	"submissions",
+	"import",
+	"website",
+	"website-layout",
+	"website-theme",
+	"website-footer",
+	"ads",
+	"engines",
+	"plugins",
+]);
 
 function routeKeyFromPath(pathname: string | null): RouteKey {
 	const seg = (pathname ?? "").replace(/^\/admin\/?/, "").split("/")[0] ?? "";
@@ -228,7 +249,13 @@ function SaveButton() {
 	}, []);
 	const onPress = useCallback(async () => {
 		const r = await save();
-		if (r?.ok) toast.success("已保存");
+		if (r?.ok) {
+			toast.success(
+				"exported" in r && r.exported
+					? "已导出配置 ZIP"
+					: "已保存",
+			);
+		}
 		else if (r && "error" in r && r.error) toast.danger(r.error);
 	}, [save]);
 	if (!mounted) {
@@ -245,8 +272,12 @@ function SaveButton() {
 					disabled
 					className="button button--md button--primary h-8 shrink-0"
 				>
-					<BiSave className="size-4" />
-					<span>已保存</span>
+					{isHtmlDeployment ? (
+						<BiDownload className="size-4" />
+					) : (
+						<BiSave className="size-4" />
+					)}
+					<span>{isHtmlDeployment ? "导出配置" : "已保存"}</span>
 				</button>
 			</form>
 		);
@@ -262,14 +293,85 @@ function SaveButton() {
 			<Button
 				variant="primary"
 				className="h-8 shrink-0"
-				isDisabled={!dirty || saving}
+				isDisabled={saving || !dirty}
 				isPending={saving}
 				onPress={onPress}
 			>
-				<BiSave className="size-4" />
-				<span>{saving ? "保存中..." : dirty ? "保存" : "已保存"}</span>
+				{isHtmlDeployment ? (
+					<BiDownload className="size-4" />
+				) : (
+					<BiSave className="size-4" />
+				)}
+				<span>
+					{saving
+						? isHtmlDeployment
+							? "导出中..."
+							: "保存中..."
+						: isHtmlDeployment
+							? "导出配置"
+							: dirty
+								? "保存"
+								: "已保存"}
+				</span>
 			</Button>
 		</form>
+	);
+}
+
+function HtmlConfigImportButton() {
+	const inputRef = useRef<HTMLInputElement>(null);
+	const nav = useAtomValue(navAtom);
+	const websiteData = useAtomValue(websiteDataAtom);
+	const applyImport = useSetAtom(applyImportAtom);
+	const [importing, setImporting] = useState(false);
+
+	const onFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		event.target.value = "";
+		if (!file) return;
+		setImporting(true);
+		try {
+			const imported = await readConfigZip(file);
+			if (
+				JSON.stringify(imported.nav) === JSON.stringify(nav) &&
+				JSON.stringify(imported.websiteData) === JSON.stringify(websiteData)
+			) {
+				toast.warning("导入配置与当前配置一致");
+				return;
+			}
+			applyImport(imported);
+			toast.success("配置已导入，请检查后导出 ZIP");
+		} catch (error) {
+			toast.danger("配置导入失败", {
+				description:
+					error instanceof Error ? error.message : "请选择有效的配置 ZIP",
+			});
+		} finally {
+			setImporting(false);
+		}
+	};
+
+	return (
+		<>
+			<input
+				ref={inputRef}
+				type="file"
+				accept=".zip,application/zip,application/x-zip-compressed"
+				className="hidden"
+				onChange={onFileChange}
+			/>
+			<Button
+				variant="outline"
+				className="h-8 w-8 shrink-0 px-0 sm:w-auto sm:px-3"
+				aria-label="导入配置 ZIP"
+				isDisabled={importing}
+				isPending={importing}
+				onPress={() => inputRef.current?.click()}
+			>
+				<BiImport className="size-4" />
+				<span className="hidden sm:inline">导入</span>
+			</Button>
+		</>
 	);
 }
 
@@ -291,7 +393,13 @@ function SaveShortcutGuard() {
 				return;
 			}
 			const r = await save();
-			if (r?.ok) toast.success("已保存");
+			if (r?.ok) {
+				toast.success(
+					"exported" in r && r.exported
+						? "已导出配置 ZIP"
+						: "已保存",
+				);
+			}
 			else if (r && "error" in r && r.error) toast.danger(r.error);
 		};
 		window.addEventListener("keydown", handler, true);
@@ -374,7 +482,11 @@ function ImportEventBridge() {
 				| undefined;
 			if (!detail) return;
 			applyImport(detail);
-			toast.success("数据已导入，请点击顶部「保存」按钮生效");
+			toast.success(
+				isHtmlDeployment
+					? "数据已导入，请点击顶部「导出配置」下载 ZIP"
+					: "数据已导入，请点击顶部「保存」按钮生效",
+			);
 		};
 		window.addEventListener("admin-import", handleImport);
 		return () => window.removeEventListener("admin-import", handleImport);
@@ -388,6 +500,18 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 	const currentKey = routeKeyFromPath(pathname);
 	const currentItem =
 		ALL_ITEMS.find((i) => i.key === currentKey) ?? ALL_ITEMS[0];
+	const visibleNavSections = useMemo(
+		() =>
+			isHtmlDeployment
+				? NAV_SECTIONS.map((section) => ({
+						...section,
+						items: section.items.filter((item) =>
+							HTML_ROUTE_KEYS.has(item.key),
+						),
+					})).filter((section) => section.items.length > 0)
+				: NAV_SECTIONS,
+		[],
+	);
 	const selectedKeys = useMemo<Selection>(
 		() => new Set([currentKey]),
 		[currentKey],
@@ -439,7 +563,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 						disallowEmptySelection
 						className="w-full"
 					>
-						{NAV_SECTIONS.map((section) => (
+						{visibleNavSections.map((section) => (
 							<ListBox.Section key={section.title}>
 								<Header>{section.title}</Header>
 								{section.items.map((it) => (
@@ -476,7 +600,6 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 			</aside>
 
 			{/* 移动端抽屉菜单 */}
-			<Drawer>
 				<Drawer.Backdrop
 					isOpen={mobileDrawerState.isOpen}
 					onOpenChange={mobileDrawerState.setOpen}
@@ -500,7 +623,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 									disallowEmptySelection
 									className="w-full px-2"
 								>
-									{NAV_SECTIONS.map((section) => (
+									{visibleNavSections.map((section) => (
 										<ListBox.Section key={section.title}>
 											<Header className="px-3">{section.title}</Header>
 											{section.items.map((it) => (
@@ -525,7 +648,6 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 						</Drawer.Dialog>
 					</Drawer.Content>
 				</Drawer.Backdrop>
-			</Drawer>
 
 			{/* 右侧主区 */}
 			<div className="flex min-w-0 flex-1 flex-col">
@@ -556,6 +678,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 
 					{/* 右侧操作区 */}
 					<div className="ml-auto flex items-center gap-2 shrink-0">
+						{isHtmlDeployment ? <HtmlConfigImportButton /> : null}
 						<SaveButton />
 
 						<Separator
@@ -586,29 +709,40 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 							<span>前台</span>
 						</Button>
 
-						{/* 退出按钮 - 小屏图标 */}
-						<Button
-							variant="tertiary"
-							isIconOnly
-							className="h-8 w-8 shrink-0 sm:hidden"
-							onPress={onLogout}
-						>
-							<BiLogOut className="size-4" />
-						</Button>
-						{/* 退出按钮 - 大屏文字 */}
-						<Button
-							variant="tertiary"
-							className="h-8 shrink-0 hidden sm:flex"
-							onPress={onLogout}
-						>
-							<BiLogOut className="size-4" />
-							<span>退出</span>
-						</Button>
+						{!isHtmlDeployment ? (
+							<>
+								{/* 退出按钮 - 小屏图标 */}
+								<Button
+									variant="tertiary"
+									isIconOnly
+									className="h-8 w-8 shrink-0 sm:hidden"
+									onPress={onLogout}
+								>
+									<BiLogOut className="size-4" />
+								</Button>
+								{/* 退出按钮 - 大屏文字 */}
+								<Button
+									variant="tertiary"
+									className="h-8 shrink-0 hidden sm:flex"
+									onPress={onLogout}
+								>
+									<BiLogOut className="size-4" />
+									<span>退出</span>
+								</Button>
+							</>
+						) : null}
 					</div>
 				</header>
 
 				{/* 内容区域 */}
 				<main className="w-full min-w-0 flex-1 p-3">
+					{isHtmlDeployment ? (
+						<div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+							当前为纯静态配置后台。修改只保存在浏览器内存中；可导入之前导出的
+							ZIP，编辑后点击右上角“导出配置”，再将 ZIP 内的 nav.json 与
+							website.json 覆盖到网站根目录。
+						</div>
+					) : null}
 					<Card className="rounded-xl border border-gray-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900">
 						{children}
 					</Card>
