@@ -54,6 +54,9 @@ export const DEFAULT_NAV: NavConfig = {
 		},
 	],
 	themeMode: "system",
+	accessProtection: {
+		enabled: false,
+	},
 	search: {
 		defaultEngine: "local",
 		enableLocalSearch: true,

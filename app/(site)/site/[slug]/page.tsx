@@ -4,6 +4,7 @@ import {
 	collectSiteDetailEntries,
 	findSiteDetailEntryBySlug,
 } from "@/lib/site-detail";
+import { readSiteAccessStatus } from "@/lib/server/site-access-request";
 
 interface SiteDetailRouteProps {
 	params: Promise<{ slug: string }>;
@@ -12,6 +13,8 @@ interface SiteDetailRouteProps {
 const STATIC_PLACEHOLDER_SLUG = "__placeholder__";
 const isHtmlDeployment =
 	(process.env.BUILD_MODE || "server").toLowerCase() === "html";
+const isServerDeployment =
+	(process.env.BUILD_MODE || "server").toLowerCase() === "server";
 
 export function generateStaticParams() {
 	if (isHtmlDeployment) {
@@ -37,6 +40,9 @@ export default async function SiteDetailRoute(props: SiteDetailRouteProps) {
 	const { slug } = await props.params;
 	if (isHtmlDeployment) {
 		notFound();
+	}
+	if (isServerDeployment && !(await readSiteAccessStatus()).allowed) {
+		return null;
 	}
 
 	const nav = getNav();

@@ -27,6 +27,7 @@ Go Nav 既可以作为带登录后台的 Node.js 应用运行，也可以打包�
 - JSON / YAML 配置驱动，无需数据库
 - 多级分类、网址管理、站内搜索和外部搜索引擎
 - 响应式布局、明暗主题、最近访问和移动端导航
+- Server 模式支持前台访问密码，验证后才显示导航内容
 - 网站信息、页脚、布局、广告、搜索引擎和自定义插件配置
 - Server 模式支持登录、图片上传、投稿审核、备份还原和远端同步
 - HTML 模式内置免登录可视化编辑页，支持导入和导出配置 ZIP
@@ -270,6 +271,15 @@ ADMIN_PASS=admin123
 
 生产环境务必修改密码。
 
+### 前台访问密码
+
+在 Server 模式后台打开「站点设置 → 访问保护」，设置访问密码并开启开关后保存。此后访问首页或网站详情页会先显示密码验证页，验证通过的设备会保留 7 天访问授权。
+
+- 访问密码使用带随机盐的哈希保存在 `nav.json`，不会以明文写入配置。
+- 修改访问密码后，之前签发的访问授权会立即失效。
+- 管理后台和登录页不受前台访问保护影响。
+- HTML 和 Static 模式没有服务端校验能力，因此不支持该功能。
+
 ### Node.js 生产部署
 
 ```bash
@@ -385,6 +395,7 @@ data/
 | `icp`、`beian`                             | 备案信息                    |
 | `footerLinks`                              | 页脚链接                    |
 | `themeMode`                                | `light`、`dark` 或 `system` |
+| `accessProtection`                         | Server 模式前台访问密码保护 |
 | `search`                                   | 站内搜索和搜索引擎配置      |
 | `ads`                                      | 首页和侧边栏广告配置        |
 | `submission`                               | 投稿入口和静态投稿邮箱      |
@@ -433,7 +444,7 @@ data/
 | `NEXT_PUBLIC_SITE_URL` | -                    | 用于生成 sitemap 的网站地址            |
 | `PORT`                 | `3000`               | Docker Compose 宿主机映射端口          |
 
-HTML 和 Static 模式没有服务端登录功能，因此 `ADMIN_USER`、`ADMIN_PASS` 和 `SESSION_SECRET` 对它们无效。
+HTML 和 Static 模式没有服务端登录与请求校验能力，因此后台登录和前台访问密码保护均不可用，`ADMIN_USER`、`ADMIN_PASS` 和 `SESSION_SECRET` 对它们无效。
 
 ## 常用命令
 

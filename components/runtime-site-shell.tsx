@@ -6,6 +6,7 @@ import { RuntimeDocumentConfig } from "@/components/runtime-document-config";
 import { RuntimeLoadingScreen } from "@/components/runtime-loading-screen";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SiteStoreProvider } from "@/lib/store/hydrate";
+import { toPublicNavConfig } from "@/lib/site-access-config";
 import type { NavConfig, ThemeMode, WebsiteData } from "@/types";
 
 interface RuntimeConfig {
@@ -42,7 +43,7 @@ export function RuntimeSiteShell() {
 		Promise.all([navPromise, websitePromise])
 			.then(([nav, websiteData]) => {
 				assertRuntimeConfig(nav, websiteData);
-				setConfig({ nav, websiteData });
+				setConfig({ nav: toPublicNavConfig(nav), websiteData });
 			})
 			.catch((reason: unknown) => {
 				if (controller.signal.aborted) return;

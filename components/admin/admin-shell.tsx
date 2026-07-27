@@ -41,6 +41,7 @@ import {
     BiImage,
     BiSync,
     BiMessageSquareAdd,
+    BiLockAlt,
 } from "react-icons/bi";
 import {
     applyImportAtom,
@@ -68,6 +69,7 @@ type RouteKey =
 	| "website-layout"
 	| "website-theme"
 	| "website-footer"
+	| "website-access"
 	| "ads"
 	| "engines"
 	| "plugins"
@@ -153,6 +155,12 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 				label: "页脚设置",
 				icon: <BiBookContent className="size-5" />,
 				desc: "ICP / 备案 / 友情链接",
+			},
+			{
+				key: "website-access",
+				label: "访问保护",
+				icon: <BiLockAlt className="size-5" />,
+				desc: "访问密码与私密站点保护",
 			},
 		],
 	},

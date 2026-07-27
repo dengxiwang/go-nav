@@ -4,6 +4,14 @@ import type { NavConfig, WebsiteData } from "@/types";
 import { SESSION_COOKIE, verifySession } from "@/lib/server/auth";
 import { revalidateFrontendPaths } from "@/lib/server/revalidate-frontend";
 import {
+	getSafeAccessProtectionConfig,
+	toAdminNavConfig,
+} from "@/lib/site-access-config";
+import {
+	prepareNavForWrite,
+	SiteAccessConfigError,
+} from "@/lib/server/site-access";
+import {
 	getConfigRevision,
 	readNav,
 	readWebsiteData,
@@ -30,7 +38,7 @@ export async function GET() {
 		const revision = getConfigRevision();
 		const res = NextResponse.json({
 			websiteData: readWebsiteData(),
-			nav: readNav(),
+			nav: toAdminNavConfig(readNav()),
 			revision,
 		});
 		res.headers.set("ETag", `"${revision}"`);
@@ -68,14 +76,30 @@ export async function PUT(req: Request) {
 				{ status: 409 },
 			);
 		}
+		const savedNav = body.nav
+			? prepareNavForWrite(body.nav, readNav())
+			: undefined;
 		if (body.websiteData) writeWebsiteData(body.websiteData);
-		if (body.nav) writeNav(body.nav);
+		if (savedNav) writeNav(savedNav);
 		revalidateFrontendPaths();
 		const revision = getConfigRevision();
-		const res = NextResponse.json({ ok: true, revision });
+		const res = NextResponse.json({
+			ok: true,
+			revision,
+			...(savedNav
+				? {
+						accessProtection: getSafeAccessProtectionConfig(
+							savedNav.accessProtection,
+						),
+					}
+				: {}),
+		});
 		res.headers.set("ETag", `"${revision}"`);
 		return res;
 	} catch (e) {
-		return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+		return NextResponse.json(
+			{ error: (e as Error).message },
+			{ status: e instanceof SiteAccessConfigError ? 400 : 500 },
+		);
 	}
 }

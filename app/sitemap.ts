@@ -22,6 +22,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 	}
 
 	const nav = getNav();
+	if (nav.accessProtection?.enabled === true) {
+		return home;
+	}
 	const detailEnabled = nav.layout?.enableSiteDetailPage === true;
 	const websiteData = getWebsiteData();
 	const detailEntries = detailEnabled

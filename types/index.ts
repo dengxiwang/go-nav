@@ -268,6 +268,25 @@ export interface SearchEngine {
 }
 
 /**
+ * 前台访问保护配置。
+ *
+ * passwordHash 只允许保存在服务端配置文件中；其余标记用于后台编辑器，
+ * 保存时会由服务端校验、生成哈希并剥离，绝不能下发到前台页面。
+ */
+export interface SiteAccessProtectionConfig {
+	/** 是否要求访客输入访问密码 */
+	enabled: boolean;
+	/** 服务端持久化的密码哈希 */
+	passwordHash?: string;
+	/** 后台展示用：服务端是否已经保存过密码 */
+	passwordConfigured?: boolean;
+	/** 后台提交用：待设置的新密码 */
+	newPassword?: string;
+	/** 后台提交用：新密码确认 */
+	confirmPassword?: string;
+}
+
+/**
  * 导航数据配置 - nav.json 的类型定义
  * 包含：网站基础信息、搜索、广告、最近访问、布局、主题、页脚等所有后台配置
  */
@@ -307,6 +326,8 @@ export interface NavConfig {
 	layout?: LayoutConfig;
 	/** 主题模式: "light" | "dark" | "system"（跟随系统），默认 "light" */
 	themeMode?: ThemeMode;
+	/** 前台访问密码保护（仅 Server 部署模式生效） */
+	accessProtection?: SiteAccessProtectionConfig;
 	/** 搜索相关配置 */
 	search: {
 		/** 默认选中的搜索引擎 ID (`local` 表示本地搜索) */
