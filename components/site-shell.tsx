@@ -6,6 +6,7 @@ import { SiteHeadInsertions } from "@/components/site-head-insertions";
 import { SiteStoreProvider } from "@/lib/store/hydrate";
 import { getNav, getWebsiteData } from "@/lib/config";
 import { pluginHasRenderablePayload } from "@/lib/plugin-config";
+import { toPublicNavConfig } from "@/lib/site-access-config";
 
 export function SiteShell() {
 	if ((process.env.BUILD_MODE || "server").toLowerCase() === "html") {
@@ -13,7 +14,7 @@ export function SiteShell() {
 	}
 
 	const websiteData = getWebsiteData();
-	const nav = getNav();
+	const nav = toPublicNavConfig(getNav());
 	const plugins = (nav.plugins ?? [])
 		.filter(pluginHasRenderablePayload)
 		.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));

@@ -4,6 +4,7 @@ import { SESSION_COOKIE, verifySession } from "@/lib/server/auth";
 import { getConfigRevision, readNav, readWebsiteData } from "@/lib/server/store";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { AdminStoreProvider } from "@/lib/store/hydrate";
+import { toAdminNavConfig } from "@/lib/site-access-config";
 
 /**
  * 后台 dashboard 路由组 layout：
@@ -20,7 +21,7 @@ export default async function DashboardLayout({
 		redirect("/admin/login");
 	}
 	const websiteData = readWebsiteData();
-	const nav = readNav();
+	const nav = toAdminNavConfig(readNav());
 	const revision = getConfigRevision();
 	return (
 		<AdminStoreProvider initial={{ websiteData, nav, revision }}>

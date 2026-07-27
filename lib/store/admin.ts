@@ -276,8 +276,17 @@ export const saveAtom = atom(null, async (get, set) => {
 				error: d.error || `保存失败 (${res.status})`,
 			};
 		}
-		const d = (await res.json().catch(() => ({}))) as { revision?: string };
+		const d = (await res.json().catch(() => ({}))) as {
+			revision?: string;
+			accessProtection?: NavConfig["accessProtection"];
+		};
 		if (d.revision) set(configRevisionAtom, d.revision);
+		if (d.accessProtection) {
+			set(_navBaseAtom, {
+				...get(_navBaseAtom),
+				accessProtection: d.accessProtection,
+			});
+		}
 		set(dirtyAtom, false);
 		return { ok: true as const, exported: false as const };
 	} catch (e) {

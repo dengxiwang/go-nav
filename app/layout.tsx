@@ -32,6 +32,10 @@ export function generateMetadata(): Metadata {
 		keywords: nav.keywords,
 		authors: nav.author ? [{ name: nav.author }] : undefined,
 		icons: nav.favicon ? { icon: nav.favicon } : undefined,
+		robots:
+			nav.accessProtection?.enabled === true
+				? { index: false, follow: false }
+				: undefined,
 		other: Object.keys(other).length > 0 ? other : undefined,
 	};
 }

@@ -2,20 +2,41 @@
 
 import {
     Button,
+    FieldError,
     Input,
+    InputGroup,
     Label,
     Separator,
     TextField,
 } from "@heroui/react";
-import { BiSun, BiMoon, BiDesktop } from "react-icons/bi";
-import type { CardStyle, LayoutConfig, ThemeMode, NavConfig } from "@/types";
+import {
+	BiDesktop,
+	BiHide,
+	BiLockAlt,
+	BiMoon,
+	BiShow,
+	BiSun,
+} from "react-icons/bi";
+import type {
+	CardStyle,
+	LayoutConfig,
+	ThemeMode,
+	NavConfig,
+	SiteAccessProtectionConfig,
+} from "@/types";
 import { useAtom, useSetAtom } from "jotai";
+import { useState } from "react";
 import { navAtom, navFieldAtom } from "@/lib/store/admin";
 import { DEFAULT_LAYOUT } from "@/lib/store/site";
 import { IconPicker } from "./icon-picker";
 import { AdminSwitch } from "./admin-switch";
 
-export type WebsiteSection = "basic" | "layout" | "theme" | "footer";
+export type WebsiteSection =
+	| "basic"
+	| "layout"
+	| "theme"
+	| "footer"
+	| "access";
 
 const DEFAULT_RECENT_VISITS_MAX = 10;
 
@@ -51,6 +72,10 @@ export function WebsiteEditor({
 
 	if (section === "footer") {
 		return <FooterEditor value={value} onPatch={patch} />;
+	}
+
+	if (section === "access") {
+		return <AccessProtectionEditor value={value} onPatch={patch} />;
 	}
 
 	return <BasicEditor value={value} onPatch={patch} />;
@@ -153,6 +178,151 @@ function BasicEditor({
 				</TextField>
 			</div>
 		</div>
+	);
+}
+
+function AccessProtectionEditor({
+	value,
+	onPatch,
+}: {
+	value: NavConfig;
+	onPatch: (p: Partial<NavConfig>) => void;
+}) {
+	const config = value.accessProtection ?? { enabled: false };
+	const passwordConfigured = config.passwordConfigured === true;
+	const newPassword = config.newPassword ?? "";
+	const confirmPassword = config.confirmPassword ?? "";
+	const passwordTooShort = newPassword.length > 0 && newPassword.length < 4;
+	const passwordMismatch =
+		confirmPassword.length > 0 && newPassword !== confirmPassword;
+
+	const patch = (next: Partial<SiteAccessProtectionConfig>) => {
+		onPatch({
+			accessProtection: {
+				...config,
+				...next,
+			},
+		});
+	};
+
+	return (
+		<div className="flex flex-col gap-6">
+			<div className="flex flex-col gap-4 rounded-2xl border border-default-200 bg-default-50/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+				<div className="flex items-start gap-3">
+					<div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+						<BiLockAlt className="size-5" />
+					</div>
+					<div>
+						<h3 className="text-sm font-semibold">访问密码保护</h3>
+						<p className="mt-1 max-w-2xl text-xs leading-5 text-default-500">
+							开启后，访客需要先输入密码，验证通过后才能查看首页和网站详情页。
+							管理后台不受影响。
+						</p>
+					</div>
+				</div>
+				<AdminSwitch
+					isSelected={config.enabled === true}
+					onChange={(enabled) => patch({ enabled })}
+					ariaLabel="开启访问密码保护"
+				>
+					<span className="text-sm font-medium">
+						{config.enabled ? "已开启" : "未开启"}
+					</span>
+				</AdminSwitch>
+			</div>
+
+			<div>
+				<h3 className="text-sm font-semibold">设置访问密码</h3>
+				<p className="mt-1 text-xs leading-5 text-default-500">
+					{passwordConfigured
+						? "已设置访问密码。下方留空会保留当前密码，填写后保存则会更换密码，并使已有访问授权失效。"
+						: "尚未设置访问密码。开启保护时必须填写，密码长度为 4–128 个字符。"}
+				</p>
+			</div>
+
+			<div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+				<AccessPasswordField
+					label={passwordConfigured ? "新访问密码（可选）" : "访问密码"}
+					value={newPassword}
+					onChange={(newPasswordValue) =>
+						patch({ newPassword: newPasswordValue })
+					}
+					autoComplete="new-password"
+					placeholder={
+						passwordConfigured ? "留空则不修改" : "至少 4 个字符"
+					}
+					error={passwordTooShort ? "访问密码至少需要 4 个字符" : ""}
+				/>
+				<AccessPasswordField
+					label="确认访问密码"
+					value={confirmPassword}
+					onChange={(confirmPasswordValue) =>
+						patch({ confirmPassword: confirmPasswordValue })
+					}
+					autoComplete="new-password"
+					placeholder="再次输入访问密码"
+					error={passwordMismatch ? "两次输入的访问密码不一致" : ""}
+				/>
+			</div>
+
+			<div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+				访问保护仅在 Server 部署模式下生效。密码会以带随机盐的哈希保存，
+				不会写入页面或下发给访客。
+			</div>
+		</div>
+	);
+}
+
+function AccessPasswordField({
+	label,
+	value,
+	onChange,
+	autoComplete,
+	placeholder,
+	error,
+}: {
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	autoComplete: string;
+	placeholder: string;
+	error: string;
+}) {
+	const [isVisible, setIsVisible] = useState(false);
+
+	return (
+		<TextField
+			value={value}
+			onChange={onChange}
+			isInvalid={Boolean(error)}
+			fullWidth
+		>
+			<Label>{label}</Label>
+			<InputGroup>
+				<InputGroup.Input
+					type={isVisible ? "text" : "password"}
+					autoComplete={autoComplete}
+					placeholder={placeholder}
+					maxLength={128}
+				/>
+				<InputGroup.Suffix className="pr-0">
+					<Button
+						isIconOnly
+						aria-label={isVisible ? "隐藏密码" : "显示密码"}
+						size="sm"
+						variant="ghost"
+						onPress={() => setIsVisible((current) => !current)}
+					>
+						{isVisible ? (
+							<BiShow className="size-4" />
+						) : (
+							<BiHide className="size-4" />
+						)}
+					</Button>
+				</InputGroup.Suffix>
+			</InputGroup>
+			{error ? <FieldError>{error}</FieldError> : null}
+		</TextField>
 	);
 }
 

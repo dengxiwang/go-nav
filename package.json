@@ -1,6 +1,6 @@
 {
   "name": "go-nav",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
   "packageManager": "pnpm@11.17.0",
   "scripts": {
@@ -62,7 +62,7 @@
     "@types/sortablejs": "^1.15.9",
     "cross-env": "^10.1.0",
     "eslint": "^10",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
     "typescript": "^6"
   }
