@@ -257,11 +257,7 @@ function patchSiteInCategories(
 async function fetchWebsitePatch(
 	url: string,
 	updateFields: BatchUpdateField[],
-	options?: {
-		signal?: AbortSignal;
-		existingIconUrl?: string;
-		existingPreviewUrl?: string;
-	},
+	signal?: AbortSignal,
 ) {
 	if (!url.trim()) {
 		throw new Error("缺少网站地址");
@@ -273,16 +269,19 @@ async function fetchWebsitePatch(
 	let data:
 		| {
 				title?: string;
-				faviconUrl?: string | null;
+				iconUrl?: string | null;
 				description?: string;
 		  }
 		| undefined;
 	if (needsSiteMeta) {
 		const res = await fetch("/api/fetch-website/", {
 			method: "POST",
-			signal: options?.signal,
+			signal,
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ url }),
+			body: JSON.stringify({
+				url,
+				fetchIcon: updateFields.includes("icon"),
+			}),
 		});
 		if (!res.ok) {
 			const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -290,7 +289,7 @@ async function fetchWebsitePatch(
 		}
 		data = (await res.json()) as {
 			title?: string;
-			faviconUrl?: string | null;
+			iconUrl?: string | null;
 			description?: string;
 		};
 	}
@@ -312,38 +311,17 @@ async function fetchWebsitePatch(
 		patch.description = description;
 		fields.push("描述");
 	}
-	if (shouldUpdateIcon && data?.faviconUrl) {
-		try {
-			const uploadRes = await fetch("/api/tools/uploadFavicon/", {
-				method: "POST",
-				signal: options?.signal,
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					faviconUrl: data?.faviconUrl,
-					existingIconUrl: options?.existingIconUrl,
-				}),
-			});
-			if (uploadRes.ok) {
-				const uploadData = (await uploadRes.json()) as { url?: string };
-				if (uploadData.url) {
-					patch.icon = uploadData.url;
-					fields.push("图标");
-				}
-			}
-		} catch {
-			// 图标下载失败时仍保留名称、描述等已获取信息。
-		}
+	if (shouldUpdateIcon && data?.iconUrl) {
+		patch.icon = data.iconUrl;
+		fields.push("图标");
 	}
 	if (shouldUpdatePreviewImage) {
 		try {
 			const previewRes = await fetch("/api/tools/capturePreview/", {
 				method: "POST",
-				signal: options?.signal,
+				signal,
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					url,
-					existingPreviewUrl: options?.existingPreviewUrl,
-				}),
+				body: JSON.stringify({ url }),
 			});
 			if (previewRes.ok) {
 				const previewData = (await previewRes.json()) as { url?: string };
@@ -691,11 +669,7 @@ export function BatchOperationsEditor() {
 						const { patch } = await fetchWebsitePatch(
 							row.url,
 							selectedUpdateFields,
-							{
-								signal: requestAbort.signal,
-								existingIconUrl: row.icon,
-								existingPreviewUrl: row.previewImage,
-							},
+							requestAbort.signal,
 						);
 						const patched = applyPatch(row, patch);
 						if (!patched) {

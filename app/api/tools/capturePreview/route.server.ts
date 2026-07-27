@@ -99,7 +99,7 @@ async function tryFetchImage(url: string) {
 /**
  * 自动获取网站首屏截图并保存到当前配置的素材存储。
  * POST /api/tools/capturePreview
- * Body: { url: string, existingPreviewUrl?: string }
+ * Body: { url: string }
  */
 export async function POST(req: Request) {
 	const store = await cookies();
@@ -108,10 +108,7 @@ export async function POST(req: Request) {
 	}
 
 	try {
-		const body = (await req.json()) as {
-			url?: string;
-			existingPreviewUrl?: string;
-		};
+		const body = (await req.json()) as { url?: string };
 		if (!body?.url) {
 			return NextResponse.json({ error: "缺少 url" }, { status: 400 });
 		}
@@ -137,7 +134,6 @@ export async function POST(req: Request) {
 					prepared.bytes,
 					{
 						dedupeByContent: true,
-						preferredExistingUrl: body.existingPreviewUrl,
 						contentType: contentTypeFromExt(prepared.ext),
 						// 截图压缩已在上方完成，避免服务端再次有损编码。
 						compress: false,
