@@ -13,6 +13,7 @@ import {
     AlertDialog,
     toast,
     Drawer,
+    Spinner,
     cn,
     useOverlayState,
 } from "@heroui/react";
@@ -1062,7 +1063,7 @@ export function SitesEditor() {
 			}
 			const data = (await res.json()) as {
 				title?: string;
-				faviconUrl?: string | null;
+				iconUrl?: string | null;
 				description?: string;
 				keywords?: string[];
 			};
@@ -1070,64 +1071,20 @@ export function SitesEditor() {
 			setEditingSite((prev) => {
 				if (!prev) return prev;
 				const updated = { ...prev };
-				if (data.title && !updated.title) {
+				if (data.title) {
 					updated.title = data.title;
 				}
-				if (data.description && !updated.description) {
+				if (data.description !== undefined) {
 					updated.description = data.description;
 				}
-				if (
-					data.keywords &&
-					data.keywords.length > 0 &&
-					(!updated.tags || updated.tags.length === 0)
-				) {
+				if (data.iconUrl) {
+					updated.icon = data.iconUrl;
+				}
+				if (data.keywords) {
 					updated.tags = data.keywords.slice(0, 5);
 				}
 				return updated;
 			});
-
-			if (data.faviconUrl) {
-				try {
-					const uploadRes = await fetch("/api/tools/uploadFavicon/", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							faviconUrl: data.faviconUrl,
-							existingIconUrl: editingSite.icon,
-						}),
-					});
-					if (uploadRes.ok) {
-						const uploadData = (await uploadRes.json()) as { url: string };
-						setEditingSite((prev) => {
-							if (!prev) return prev;
-							return { ...prev, icon: uploadData.url };
-						});
-					}
-				} catch {
-					// 图标上传失败，不影响其他信息
-				}
-			}
-
-			if (!editingSite?.previewImage) {
-				try {
-					const previewRes = await fetch("/api/tools/capturePreview/", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							url: editingSite.url,
-							existingPreviewUrl: editingSite.previewImage,
-						}),
-					});
-					if (previewRes.ok) {
-						const previewData = (await previewRes.json()) as { url: string };
-						setEditingSite((prev) =>
-							prev ? { ...prev, previewImage: previewData.url } : prev,
-						);
-					}
-				} catch {
-					// 预览图获取失败不影响基础信息
-				}
-			}
 
 			toast.success("网站信息获取成功");
 		} catch (e) {
@@ -1147,10 +1104,7 @@ export function SitesEditor() {
 			const res = await fetch("/api/tools/capturePreview/", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					url: editingSite.url,
-					existingPreviewUrl: editingSite.previewImage,
-				}),
+				body: JSON.stringify({ url: editingSite.url }),
 			});
 			if (!res.ok) {
 				const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -1519,21 +1473,39 @@ export function SitesEditor() {
 															size="sm"
 															variant="tertiary"
 															className={"rounded-lg h-7 px-2 gap-1 text-xs!"}
-															isDisabled={fetchingInfo || capturingPreview}
+															isPending={fetchingInfo}
+															isDisabled={capturingPreview}
 															onPress={fetchWebsiteInfo}
 														>
-															<BiGlobe className="size-4" />
-															网站信息
+															{({ isPending }) => (
+																<>
+																	{isPending ? (
+																		<Spinner color="current" size="sm" />
+																	) : (
+																		<BiGlobe className="size-4" />
+																	)}
+																	{isPending ? "获取中" : "网站信息"}
+																</>
+															)}
 														</Button>
 														<Button
 															size="sm"
 															variant="tertiary"
 															className={"rounded-lg h-7 px-2 gap-1 text-xs!"}
-															isDisabled={fetchingInfo || capturingPreview}
+															isPending={capturingPreview}
+															isDisabled={fetchingInfo}
 															onPress={captureWebsitePreview}
 														>
-															<BiImage className="size-4" />
-															预览图
+															{({ isPending }) => (
+																<>
+																	{isPending ? (
+																		<Spinner color="current" size="sm" />
+																	) : (
+																		<BiImage className="size-4" />
+																	)}
+																	{isPending ? "获取中" : "预览图"}
+																</>
+															)}
 														</Button>
 													</div>
 												</InputGroup.Suffix>
@@ -1549,7 +1521,7 @@ export function SitesEditor() {
 											<Input placeholder="http://192.168.x.x:xxxx" />
 										</TextField>
 										<p className="text-xs text-default-500 -mt-2">
-											可自动抓取网站首屏截图作为预览图；部分站点会因反爬策略导致抓取失败。
+											“网站信息”更新名称、描述、标签和图标；“预览图”只抓取网站首屏截图。
 										</p>
 										<TextField
 											value={editingSite?.title ?? ""}

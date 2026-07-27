@@ -268,11 +268,6 @@ export interface SaveUploadOptions {
 	 * 开启后会按内容哈希去重：同内容文件复用已有 URL，避免重复写入。
 	 */
 	dedupeByContent?: boolean;
-	/**
-	 * 当前正在使用的上传 URL（例如站点现有 icon/preview）。
-	 * 当内容一致时优先复用该 URL，避免字段发生无意义变更。
-	 */
-	preferredExistingUrl?: string;
 }
 
 export function saveUpload(
@@ -290,11 +285,6 @@ export function saveUpload(
 	}
 
 	const contentHash = createUploadContentHash(bytes);
-	const preferredPath = resolveUploadPathFromUrl(options.preferredExistingUrl);
-	if (preferredPath && hasUploadWithHash(preferredPath, contentHash)) {
-		return toUploadUrl(path.basename(preferredPath));
-	}
-
 	const hashFileName = `${base}-${contentHash.slice(0, 12)}${ext}`;
 	const hashFilePath = path.join(UPLOADS_DIR, hashFileName);
 	if (hasUploadWithHash(hashFilePath, contentHash)) {
@@ -358,26 +348,6 @@ function hasUploadWithHash(filePath: string, expectedHash: string): boolean {
 	} catch {
 		return false;
 	}
-}
-
-function resolveUploadPathFromUrl(url: string | undefined): string | null {
-	if (!url) return null;
-	const clean = url.split("?")[0]?.split("#")[0] || "";
-	if (!clean.startsWith("/uploads/")) return null;
-	const rawFileName = clean.slice("/uploads/".length);
-	if (!rawFileName || rawFileName.includes("/") || rawFileName.includes("\\")) {
-		return null;
-	}
-	let fileName = rawFileName;
-	try {
-		fileName = decodeURIComponent(rawFileName);
-	} catch {
-		return null;
-	}
-	const filePath = path.join(UPLOADS_DIR, fileName);
-	const rel = path.relative(UPLOADS_DIR, filePath);
-	if (rel.startsWith("..") || path.isAbsolute(rel)) return null;
-	return filePath;
 }
 
 function findExistingUploadByHash(
