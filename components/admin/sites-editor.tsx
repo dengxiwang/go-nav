@@ -8,6 +8,8 @@ import {
     Label,
     Link,
     Modal,
+    Tabs,
+    TextArea,
     TextField,
     Table,
     AlertDialog,
@@ -65,8 +67,14 @@ import type { NavCategory, WebsiteData, NavSite } from "@/types";
 import { useAtom, useAtomValue } from "jotai";
 import { categoriesAtom, navAtom } from "@/lib/store/admin";
 import { uploadImageWithCompression } from "@/lib/client/image-upload";
+import { isHtmlDeployment } from "@/lib/client/html-admin";
 import { getPreferredSiteHref } from "@/lib/client/site-link";
 import { getIconImageSrc } from "@/lib/icon";
+import {
+	MAX_SITE_DETAIL_PREVIEW_IMAGES,
+	normalizeSitePreviewImages,
+} from "@/lib/site-detail";
+import { SiteDetailMarkdown } from "@/components/app-layout/site-detail-markdown";
 import { IconPicker } from "./icon-picker";
 import {
     resolveConfiguredValue,
@@ -591,7 +599,6 @@ function PreviewImagePicker({
 		setUploading(true);
 		try {
 			const url = await uploadImageWithCompression(f, {
-				maxEdge: 1600,
 				quality: 0.84,
 				compress: nav.imageUpload?.compress === true,
 				forceWebp: nav.imageUpload?.convertToWebp === true,
@@ -673,6 +680,263 @@ function PreviewImagePicker({
 				/>
 			</div>
 		</div>
+	);
+}
+
+function DetailPreviewImagesPicker({
+	value,
+	onChange,
+}: {
+	value?: string[];
+	onChange: (value: string[]) => void;
+}) {
+	const fileRef = useRef<HTMLInputElement>(null);
+	const [urlDraft, setUrlDraft] = useState("");
+	const [uploading, setUploading] = useState(false);
+	const nav = useAtomValue(navAtom);
+	const images = normalizeSitePreviewImages(value);
+	const remaining = MAX_SITE_DETAIL_PREVIEW_IMAGES - images.length;
+
+	const appendImages = (nextImages: string[]) => {
+		onChange(normalizeSitePreviewImages([...images, ...nextImages]));
+	};
+
+	const addUrlDraft = () => {
+		const urls = urlDraft
+			.split(/[\n,，]+/)
+			.map((item) => item.trim())
+			.filter(Boolean);
+		if (urls.length === 0) {
+			toast.warning("请先填写图片 URL");
+			return;
+		}
+		if (remaining <= 0) {
+			toast.warning(`详情预览图最多 ${MAX_SITE_DETAIL_PREVIEW_IMAGES} 张`);
+			return;
+		}
+		appendImages(urls.slice(0, remaining));
+		setUrlDraft("");
+	};
+
+	const onFilesChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
+		const files = Array.from(event.target.files ?? []);
+		event.target.value = "";
+		if (files.length === 0) return;
+		if (remaining <= 0) {
+			toast.warning(`详情预览图最多 ${MAX_SITE_DETAIL_PREVIEW_IMAGES} 张`);
+			return;
+		}
+
+		const selectedFiles = files.slice(0, remaining);
+		if (files.length > selectedFiles.length) {
+			toast.warning(
+				`本次只会上传前 ${selectedFiles.length} 张，详情预览图最多 ${MAX_SITE_DETAIL_PREVIEW_IMAGES} 张`,
+			);
+		}
+
+		setUploading(true);
+		const uploaded: string[] = [];
+		try {
+			for (const file of selectedFiles) {
+				const url = await uploadImageWithCompression(file, {
+					quality: 0.84,
+					compress: nav.imageUpload?.compress === true,
+					forceWebp: nav.imageUpload?.convertToWebp === true,
+					fileNamePrefix: "detail-preview",
+				});
+				uploaded.push(url);
+			}
+			appendImages(uploaded);
+			toast.success(`已上传 ${uploaded.length} 张详情预览图`);
+		} catch (error) {
+			if (uploaded.length > 0) appendImages(uploaded);
+			toast.danger((error as Error).message || "详情预览图上传失败");
+		} finally {
+			setUploading(false);
+		}
+	};
+
+	const moveImage = (index: number, direction: -1 | 1) => {
+		const target = index + direction;
+		if (target < 0 || target >= images.length) return;
+		const next = [...images];
+		const [moved] = next.splice(index, 1);
+		if (!moved) return;
+		next.splice(target, 0, moved);
+		onChange(next);
+	};
+
+	return (
+		<div className="space-y-3">
+			{images.length > 0 ? (
+				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					{images.map((image, index) => (
+						<div
+							key={`${image}-${index}`}
+							className="overflow-hidden rounded-xl border border-default bg-default/20"
+						>
+							<div className="aspect-video bg-default/30">
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img
+									src={image}
+									alt={`详情预览图 ${index + 1}`}
+									className="h-full w-full object-cover"
+									loading="lazy"
+								/>
+							</div>
+							<div className="flex items-center gap-1 p-2">
+								<span
+									className="min-w-0 flex-1 truncate text-xs text-default-500"
+									title={image}
+								>
+									{index + 1}. {image}
+								</span>
+								<Button
+									isIconOnly
+									size="sm"
+									variant="tertiary"
+									aria-label="向前移动"
+									isDisabled={index === 0}
+									onPress={() => moveImage(index, -1)}
+								>
+									<BiChevronUp className="size-4 -rotate-90" />
+								</Button>
+								<Button
+									isIconOnly
+									size="sm"
+									variant="tertiary"
+									aria-label="向后移动"
+									isDisabled={index === images.length - 1}
+									onPress={() => moveImage(index, 1)}
+								>
+									<BiChevronDown className="size-4 -rotate-90" />
+								</Button>
+								<Button
+									isIconOnly
+									size="sm"
+									variant="tertiary"
+									aria-label="删除详情预览图"
+									className="text-danger"
+									onPress={() =>
+									onChange(
+										images.filter((_, itemIndex) => itemIndex !== index),
+									)
+									}
+								>
+									<BiTrash className="size-4" />
+								</Button>
+							</div>
+						</div>
+					))}
+				</div>
+			) : (
+				<div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-default bg-default/20 text-xs text-default-500">
+					尚未添加详情预览图
+				</div>
+			)}
+
+			<div className="rounded-xl border border-default bg-default/20 p-3">
+				<div className="mb-2 flex flex-wrap items-center justify-between gap-1">
+					<Label htmlFor="detail-preview-urls">批量添加图片 URL</Label>
+					<span className="text-xs text-default-500">
+						每行一个，也支持逗号分隔
+					</span>
+				</div>
+				<div className="min-w-0">
+					<TextArea
+						id="detail-preview-urls"
+						fullWidth
+						rows={2}
+						value={urlDraft}
+						onChange={(event) => setUrlDraft(event.target.value)}
+						placeholder="https://example.com/preview-1.png"
+					/>
+				</div>
+				<div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+					<div className="flex flex-wrap items-center gap-2">
+						<Button
+							size="sm"
+							variant="outline"
+							isPending={uploading}
+							isDisabled={remaining <= 0 || isHtmlDeployment}
+							onPress={() => fileRef.current?.click()}
+						>
+							<BiImage className="size-4" />
+							{uploading ? "上传中" : "多图上传"}
+						</Button>
+						<span className="text-xs text-default-500">
+							{images.length}/{MAX_SITE_DETAIL_PREVIEW_IMAGES} 张，
+							{isHtmlDeployment
+								? "HTML 模式请使用图片 URL"
+								: "推荐 2～4 张"}
+						</span>
+					</div>
+					<Button
+						size="sm"
+						variant="primary"
+						isDisabled={!urlDraft.trim() || remaining <= 0}
+						onPress={addUrlDraft}
+					>
+						添加图片 URL
+					</Button>
+				</div>
+				<input
+					ref={fileRef}
+					type="file"
+					multiple
+					accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+					className="hidden"
+					onChange={onFilesChosen}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function DetailMarkdownEditor({
+	value,
+	onChange,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+}) {
+	return (
+		<Tabs defaultSelectedKey="write" className="w-full">
+			<Tabs.ListContainer>
+				<Tabs.List aria-label="详情正文编辑模式">
+					<Tabs.Tab id="write">
+						编写
+						<Tabs.Indicator />
+					</Tabs.Tab>
+					<Tabs.Tab id="preview">
+						预览
+						<Tabs.Indicator />
+					</Tabs.Tab>
+				</Tabs.List>
+			</Tabs.ListContainer>
+			<Tabs.Panel id="write" className="p-0">
+				<TextArea
+					className="mt-3"
+					fullWidth
+					rows={10}
+					value={value}
+					onChange={(event) => onChange(event.target.value)}
+					placeholder={
+						"## 站点介绍\n\n支持 **Markdown**、列表、表格、代码和图片。"
+					}
+					style={{ resize: "vertical" }}
+				/>
+			</Tabs.Panel>
+			<Tabs.Panel id="preview" className="p-0">
+				<div className="mt-3 min-h-56 rounded-xl border border-default bg-default/20 p-4">
+					{value.trim() ? (
+						<SiteDetailMarkdown markdown={value} />
+					) : (
+						<p className="text-sm text-default-500">暂无详情正文</p>
+					)}
+				</div>
+			</Tabs.Panel>
+		</Tabs>
 	);
 }
 
@@ -1005,6 +1269,8 @@ export function SitesEditor() {
 			intranetUrl: "",
 			icon: "",
 			previewImage: "",
+			previewImages: [],
+			detailMarkdown: "",
 			bgColor: "rgba(255, 255, 255, 0)",
 			iconPadding: "",
 			tags: [],
@@ -1029,15 +1295,27 @@ export function SitesEditor() {
 			toast.warning("网站地址不能为空");
 			return;
 		}
+		const siteToSave: NavSite = { ...editingSite };
+		const previewImages = normalizeSitePreviewImages(
+			siteToSave.previewImages,
+		);
+		if (previewImages.length > 0) {
+			siteToSave.previewImages = previewImages;
+		} else {
+			delete siteToSave.previewImages;
+		}
+		if (!siteToSave.detailMarkdown?.trim()) {
+			delete siteToSave.detailMarkdown;
+		}
 		if (editingIndex >= 0) {
 			updateSites((sites) => {
 				const copy = [...sites];
-				copy[editingIndex] = editingSite;
+				copy[editingIndex] = siteToSave;
 				return copy;
 			});
 			toast.success(`网址"${editingSite.title}"已更新，记得点击保存`);
 		} else {
-			updateSites((sites) => [...sites, editingSite]);
+			updateSites((sites) => [...sites, siteToSave]);
 			toast.success(`网址"${editingSite.title}"已添加，记得点击保存`);
 		}
 		setIsModalOpen(false);
@@ -1435,8 +1713,8 @@ export function SitesEditor() {
 						isOpen={isModalOpen}
 						onOpenChange={(open) => !open && setIsModalOpen(false)}
 					>
-						<Modal.Container>
-							<Modal.Dialog className="sm:max-w-125">
+						<Modal.Container size="lg">
+							<Modal.Dialog>
 								<Modal.CloseTrigger />
 								<Modal.Header>
 									<Modal.Heading>
@@ -1518,7 +1796,9 @@ export function SitesEditor() {
 											}
 										>
 											<Label>内网地址（可选）</Label>
-											<Input placeholder="http://192.168.x.x:xxxx" />
+											<Input
+												placeholder="http://192.168.x.x:xxxx"
+											/>
 										</TextField>
 										<p className="text-xs text-default-500 -mt-2">
 											“网站信息”更新名称、描述、标签和图标；“预览图”只抓取网站首屏截图。
@@ -1538,8 +1818,10 @@ export function SitesEditor() {
 												setEditingSite({ ...editingSite!, description: v })
 											}
 										>
-											<Label>描述</Label>
-											<Input placeholder="可选" />
+											<Label>卡片摘要</Label>
+											<Input
+												placeholder="用于首页卡片、本地搜索和详情页摘要"
+											/>
 										</TextField>
 										<TextField
 											value={(editingSite?.tags ?? []).join(", ")}
@@ -1554,7 +1836,9 @@ export function SitesEditor() {
 											}
 										>
 											<Label>标签（逗号分隔）</Label>
-											<Input placeholder="工具, 开发, 代码" />
+											<Input
+												placeholder="工具, 开发, 代码"
+											/>
 										</TextField>
 										<div className="flex flex-col gap-1">
 											<Label>图标</Label>
@@ -1575,7 +1859,7 @@ export function SitesEditor() {
 											/>
 										</div>
 										<div className="flex flex-col gap-1">
-											<Label>预览图</Label>
+											<Label>卡片预览图</Label>
 											<PreviewImagePicker
 												value={editingSite?.previewImage ?? ""}
 												onChange={(v) =>
@@ -1586,8 +1870,36 @@ export function SitesEditor() {
 												}
 											/>
 											<p className="text-xs text-default-500">
-												选择“预览图卡片”样式后会展示这张图；留空时使用图标占位。
+												只用于首页“预览图卡片”样式；不会自动加入详情图组。
 											</p>
+										</div>
+										<div className="border-t border-default pt-4">
+											<div className="mb-3">
+												<h3 className="text-sm font-semibold">详情预览图</h3>
+												<p className="mt-1 text-xs text-default-500">
+													仅在网址详情页展示；未配置时自动回退到卡片预览图。
+												</p>
+											</div>
+											<DetailPreviewImagesPicker
+												value={editingSite?.previewImages}
+												onChange={(previewImages) =>
+													setEditingSite({ ...editingSite!, previewImages })
+												}
+											/>
+										</div>
+										<div className="border-t border-default pt-4">
+											<div className="mb-2">
+												<h3 className="text-sm font-semibold">详情正文</h3>
+												<p className="mt-1 text-xs text-default-500">
+													支持 Markdown、GFM 表格和普通换行；原始 HTML 不会执行。
+												</p>
+											</div>
+											<DetailMarkdownEditor
+												value={editingSite?.detailMarkdown ?? ""}
+												onChange={(detailMarkdown) =>
+													setEditingSite({ ...editingSite!, detailMarkdown })
+												}
+											/>
 										</div>
 									</div>
 								</Modal.Body>

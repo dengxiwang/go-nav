@@ -87,6 +87,11 @@ export function EnginesEditor() {
 		},
 		{ label: "显示搜索引擎切换器", key: "showEngineSelector", def: true },
 		{ label: "启用搜索联想词", key: "enableSuggestion", def: false },
+		{
+			label: "恢复上次选择的搜索引擎",
+			key: "rememberLastEngine",
+			def: false,
+		},
 		{ label: "Tab 键快捷聚焦搜索框", key: "enableTabFocus", def: true },
 	];
 

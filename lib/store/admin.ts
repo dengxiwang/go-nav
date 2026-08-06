@@ -40,6 +40,7 @@ const EMPTY_NAV: NavConfig = {
 	search: {
 		defaultEngine: "",
 		enableLocalSearch: false,
+		rememberLastEngine: false,
 		placeholder: "",
 		engines: [],
 	},

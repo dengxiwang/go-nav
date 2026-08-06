@@ -35,16 +35,11 @@ interface AdBannerProps {
 	cardStyle?: CardStyle;
 }
 
-interface CarouselAd {
-	ad: AdConfig;
-	instance: number;
-	originalIndex: number;
-}
-
 interface AdCardProps {
 	ad: AdConfig;
 	aspectRatio: string;
 	cardSurfaceClass: string;
+	imageRadiusClass: string;
 	hasHoverShadow: boolean;
 	isAccessible: boolean;
 	isEager: boolean;
@@ -56,6 +51,7 @@ function AdCard({
 	ad,
 	aspectRatio,
 	cardSurfaceClass,
+	imageRadiusClass,
 	hasHoverShadow,
 	isAccessible,
 	isEager,
@@ -77,7 +73,7 @@ function AdCard({
 			}`}
 		>
 			<div
-				className="overflow-hidden rounded-lg bg-surface-secondary"
+				className={`overflow-hidden ${imageRadiusClass} bg-surface-secondary`}
 				style={{ aspectRatio }}
 			>
 				{ad.image ? (
@@ -109,44 +105,20 @@ function AdCard({
 	);
 }
 
-function buildLoopSlides(ads: AdConfig[]): CarouselAd[] {
-	if (ads.length <= 1) {
-		return ads.map((ad, originalIndex) => ({
-			ad,
-			instance: 0,
-			originalIndex,
-		}));
-	}
-
-	return Array.from({ length: 3 }, (_, instance) =>
-		ads.map((ad, originalIndex) => ({ ad, instance, originalIndex })),
-	).flat();
-}
-
 function slideToOriginalAd(
 	swiper: SwiperClass,
 	originalIndex: number,
-	total: number,
-	carouselLength: number,
 ) {
-	const current = swiper.activeIndex;
-	const currentOriginal = current % total;
-	let delta = originalIndex - currentOriginal;
-	if (delta > total / 2) delta -= total;
-	if (delta < -total / 2) delta += total;
-	const target = Math.min(carouselLength - 1, Math.max(0, current + delta));
-	swiper.slideTo(target);
+	swiper.slideToLoop(originalIndex);
 }
 
 function AdCarouselControls({
 	activeIndex,
-	carouselLength,
 	placement,
 	swiperRef,
 	total,
 }: {
 	activeIndex: number;
-	carouselLength: number;
 	placement: AdDisplayPosition;
 	swiperRef: RefObject<SwiperClass | null>;
 	total: number;
@@ -154,7 +126,7 @@ function AdCarouselControls({
 	const goToAd = (index: number) => {
 		const instance = swiperRef.current;
 		if (instance) {
-			slideToOriginalAd(instance, index, total, carouselLength);
+			slideToOriginalAd(instance, index);
 		}
 	};
 	const arrowSize = placement === "sidebar" ? "size-8" : "size-9";
@@ -206,7 +178,7 @@ function AdCarouselControls({
  * 配置驱动的广告轮播。
  *
  * 服务端渲染和静态导出阶段直接输出最终列数、间距与平铺首屏；
- * Swiper 使用前后各一页缓冲数据，无缝接管拖拽、自动播放与循环切换。
+ * Swiper 原生 loop 接管拖拽、自动播放与循环切换。
  */
 function AdBannerImpl({
 	ads,
@@ -228,17 +200,15 @@ function AdBannerImpl({
 		1,
 		Math.min(requestedVisibleCount, total),
 	);
-	const canNavigate = total > 1;
-	const carouselAds = buildLoopSlides(ads);
-	const carouselLength = carouselAds.length;
-	const initialSlide = canNavigate ? total : 0;
-	const initialVisibleStart = initialSlide;
-	const initialVisibleEnd = initialVisibleStart + actualVisibleCount;
+	const canNavigate = total > actualVisibleCount;
+	const initialVisibleStart = 0;
+	const initialVisibleEnd = actualVisibleCount;
 	const gap = placement === "sidebar" ? 8 : configuredGap;
 	const cardSurfaceClass =
 		cardStyle === "preview"
 			? PREVIEW_CARD_SURFACE_CLASS
 			: COMPACT_CARD_SURFACE_CLASS;
+	const imageRadiusClass = cardStyle === "preview" ? "rounded-xl" : "rounded-lg";
 	const serverLayoutStyle = {
 		"--ad-gap": `${gap}px`,
 		"--ad-visible-count": actualVisibleCount,
@@ -254,30 +224,14 @@ function AdBannerImpl({
 		boxSizing: "border-box",
 		padding: "1px",
 	} satisfies CSSProperties;
-	const serverPreviewAds = carouselAds.slice(
-		initialVisibleStart,
-		initialVisibleEnd,
-	);
+	const serverPreviewAds = ads.slice(initialVisibleStart, initialVisibleEnd);
 
 	const updateActiveIndex = useCallback(
 		(instance: SwiperClass) => {
-			if (total > 0) setActiveIndex(instance.activeIndex % total);
+			if (total > 0) setActiveIndex(instance.realIndex % total);
 		},
 		[total],
 	);
-	const recenterLoopTrack = useCallback(
-		(instance: SwiperClass) => {
-			if (!canNavigate) return;
-			const current = instance.activeIndex;
-			if (current < total) {
-				instance.slideTo(current + total, 0, false);
-			} else if (current >= carouselLength - total) {
-				instance.slideTo(current - total, 0, false);
-			}
-		},
-		[canNavigate, carouselLength, total],
-	);
-
 	if (total === 0) return null;
 
 	return (
@@ -302,12 +256,13 @@ function AdBannerImpl({
 				className="ad-carousel__server-preview"
 				style={serverPreviewStyle}
 			>
-				{serverPreviewAds.map(({ ad, instance, originalIndex }) => (
-					<div key={`${ad.id}-server-${instance}`} className="min-w-0">
+				{serverPreviewAds.map((ad, originalIndex) => (
+					<div key={`${ad.id}-server-${originalIndex}`} className="min-w-0">
 						<AdCard
 							ad={ad}
 							aspectRatio={aspectRatio}
 							cardSurfaceClass={cardSurfaceClass}
+							imageRadiusClass={imageRadiusClass}
 							hasHoverShadow={placement === "sidebar"}
 							isAccessible
 							isEager
@@ -325,7 +280,7 @@ function AdBannerImpl({
 				slidesPerView={actualVisibleCount}
 				slidesPerGroup={1}
 				spaceBetween={gap}
-				initialSlide={initialSlide}
+				loop={canNavigate}
 				speed={500}
 				watchOverflow
 				watchSlidesProgress
@@ -333,10 +288,11 @@ function AdBannerImpl({
 				keyboard={{ enabled: true, onlyInViewport: true }}
 				autoplay={
 					canNavigate
-						? {
+							? {
 								delay: autoplayInterval,
 								disableOnInteraction: false,
 								pauseOnMouseEnter: true,
+								waitForTransition: true,
 							}
 						: false
 				}
@@ -355,14 +311,15 @@ function AdBannerImpl({
 					});
 				}}
 				onActiveIndexChange={updateActiveIndex}
-				onSlideChangeTransitionEnd={recenterLoopTrack}
+				onRealIndexChange={updateActiveIndex}
 			>
-				{carouselAds.map(({ ad, instance, originalIndex }, index) => {
+				{ads.map((ad, index) => {
+					const originalIndex = index;
 					const isInitiallyVisible =
 						index >= initialVisibleStart && index < initialVisibleEnd;
 					return (
 						<SwiperSlide
-							key={`${ad.id}-${instance}`}
+							key={`${ad.id}-${index}`}
 							className="ad-carousel__slide"
 							data-initial-visible={isInitiallyVisible ? "true" : "false"}
 						>
@@ -375,6 +332,7 @@ function AdBannerImpl({
 										ad={ad}
 										aspectRatio={aspectRatio}
 										cardSurfaceClass={cardSurfaceClass}
+										imageRadiusClass={imageRadiusClass}
 										hasHoverShadow={placement === "sidebar"}
 										isAccessible={isAccessible}
 										isEager={isInitiallyVisible}
@@ -390,7 +348,6 @@ function AdBannerImpl({
 			{canNavigate ? (
 				<AdCarouselControls
 					activeIndex={activeIndex}
-					carouselLength={carouselLength}
 					placement={placement}
 					swiperRef={swiperRef}
 					total={total}

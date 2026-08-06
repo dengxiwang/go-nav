@@ -60,6 +60,7 @@ export const DEFAULT_NAV: NavConfig = {
 	search: {
 		defaultEngine: "local",
 		enableLocalSearch: true,
+		rememberLastEngine: false,
 		showEngineSelector: true,
 		enableSuggestion: true,
 		enableTabFocus: true,
@@ -144,6 +145,7 @@ export const DEFAULT_NAV: NavConfig = {
 		linkTarget: "new",
 		autoUseIntranet: false,
 		enableSiteDetailPage: false,
+		showSiteDetailUrl: true,
 	},
 	homeAdsAspectRatio: "16/9",
 	sidebarAdsAspectRatio: "4/3",

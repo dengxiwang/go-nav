@@ -256,7 +256,8 @@ export const CategorySidebar = memo(function CategorySidebar({
 		if (!listRef.current) return;
 		const selected = listRef.current.querySelector('[data-selected="true"]');
 		if (selected) {
-			selected.scrollIntoView({ block: "nearest", behavior: "smooth" });
+			// 页面滚动结束后的被动同步不再额外启动一段侧栏平滑滚动。
+			selected.scrollIntoView({ block: "nearest", behavior: "auto" });
 		}
 	}, [selectedId]);
 
@@ -357,35 +358,14 @@ export const CategorySidebar = memo(function CategorySidebar({
 							const siteCount = siteCounts.get(c.id) ?? 0;
 							const isSearchHighlighted = index === searchHighlightIndex;
 							return (
-								<ListBoxItem
+								<CategorySidebarItem
 									key={c.id}
-									id={c.id}
-									textValue={c.name}
-									className={`gap-2.5 rounded-xl data-[selected=true]:bg-(--primary-foreground)! data-[selected=true]:shadow! ${
-										isChild ? "pl-8 text-sm" : ""
-									} ${isSearchHighlighted ? "bg-default" : ""}`}
-								>
-									{hasAnyIcon || isChild ? (
-										<span
-											className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none"
-											aria-hidden
-										>
-											<IconView
-												icon={c.icon}
-												size={16}
-												textClassName="w-full"
-											/>
-										</span>
-									) : (
-										<GridIcon />
-									)}
-									<span className="flex-1 truncate">{c.name}</span>
-									{siteCount > 0 && (
-										<Chip size="sm" variant="soft" className="ml-auto">
-											{siteCount}
-										</Chip>
-									)}
-								</ListBoxItem>
+									category={c}
+									isChild={isChild}
+									siteCount={siteCount}
+									hasAnyIcon={hasAnyIcon}
+									isSearchHighlighted={isSearchHighlighted}
+								/>
 							);
 						})}
 					</ListBox>
@@ -394,6 +374,51 @@ export const CategorySidebar = memo(function CategorySidebar({
 			{showSubmissionAction && <SubmissionSidebarButton context={context} />}
 			{footer}
 		</div>
+	);
+});
+
+const CategorySidebarItem = memo(function CategorySidebarItem({
+	category,
+	isChild,
+	siteCount,
+	hasAnyIcon,
+	isSearchHighlighted,
+}: {
+	category: NavCategory;
+	isChild: boolean;
+	siteCount: number;
+	hasAnyIcon: boolean;
+	isSearchHighlighted: boolean;
+}) {
+	return (
+		<ListBoxItem
+			id={category.id}
+			textValue={category.name}
+			className={`gap-2.5 rounded-xl data-[selected=true]:bg-(--primary-foreground)! data-[selected=true]:shadow! ${
+				isChild ? "pl-8 text-sm" : ""
+			} ${isSearchHighlighted ? "bg-default" : ""}`}
+		>
+			{hasAnyIcon || isChild ? (
+				<span
+					className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none"
+					aria-hidden
+				>
+					<IconView
+						icon={category.icon}
+						size={16}
+						textClassName="w-full"
+					/>
+				</span>
+			) : (
+				<GridIcon />
+			)}
+			<span className="flex-1 truncate">{category.name}</span>
+			{siteCount > 0 && (
+				<Chip size="sm" variant="soft" className="ml-auto">
+					{siteCount}
+				</Chip>
+			)}
+		</ListBoxItem>
 	);
 });
 

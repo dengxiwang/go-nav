@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
-	activeIdAtom,
-	categoriesAtom,
-	showSubcategoryTabsAtom,
+    activeIdAtom,
+    categoriesAtom,
+    showSubcategoryTabsAtom,
 } from "@/lib/store/site";
 
-/** 滚动停止后再同步侧栏选中态，避免滚动过程中频繁改 selectedKeys */
+/** IntersectionObserver 不可用时的滚动停止兜底延迟。 */
 const SCROLL_END_DELAY = 140;
 /** 跳转后若长时间持续滚动，保护态的最长保留时间 */
 const JUMP_GUARD_MAX_MS = 3600;
@@ -33,6 +33,30 @@ function listenWindowScrollSignals(listener: () => void) {
 		for (const eventName of SCROLL_SIGNAL_EVENTS) {
 			window.removeEventListener(eventName, listener);
 		}
+	};
+}
+
+/** 优先使用原生 scrollend；旧浏览器才在连续 scroll 上维护兜底定时器。 */
+function listenWindowScrollEnd(listener: () => void) {
+	if (typeof window === "undefined") return () => {};
+
+	const supportsNativeScrollEnd =
+		"onscrollend" in (window as unknown as Record<string, unknown>);
+	if (supportsNativeScrollEnd) {
+		window.addEventListener("scrollend", listener, { passive: true });
+		return () => window.removeEventListener("scrollend", listener);
+	}
+
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	const schedule = () => {
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(listener, SCROLL_END_DELAY);
+	};
+
+	window.addEventListener("scroll", schedule, { passive: true });
+	return () => {
+		window.removeEventListener("scroll", schedule);
+		if (timer) clearTimeout(timer);
 	};
 }
 
@@ -90,8 +114,6 @@ export function useActiveSectionWriter() {
 	const categories = useAtomValue(categoriesAtom);
 	const showSubcategoryTabs = useAtomValue(showSubcategoryTabsAtom);
 	const setActiveId = useSetAtom(activeIdAtom);
-	const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const lastScrollYRef = useRef(0);
 
 	const parentIds = useMemo(() => categories.map((c) => c.id), [categories]);
 
@@ -117,9 +139,15 @@ export function useActiveSectionWriter() {
 		if (pathname !== "/") return;
 		if (trackedIds.length === 0) return;
 
-		lastScrollYRef.current = window.scrollY;
 		const topIdSet = new Set(trackedIds);
-		const getElements = () => {
+		let elements: HTMLElement[] = [];
+		let bootstrapTimer: ReturnType<typeof setTimeout> | null = null;
+		let clearHashTimer: ReturnType<typeof setTimeout> | null = null;
+		let hashScrollRaf = 0;
+		let trackingRaf = 0;
+		let cleanupTracking = () => {};
+
+		const collectElements = () => {
 			const main = document.querySelector("main");
 			if (!main) return [] as HTMLElement[];
 			return Array.from(
@@ -127,53 +155,53 @@ export function useActiveSectionWriter() {
 			).filter((el) => topIdSet.has(el.id));
 		};
 
-		const findActiveByPosition = () => {
-			const elements = getElements();
-			if (elements.length === 0) return;
-
+		const resolveActiveByPosition = () => {
+			if (elements.length === 0) return undefined;
 			const currentScrollY = window.scrollY;
-			const scrollingUp = currentScrollY < lastScrollYRef.current - 1;
-			lastScrollYRef.current = currentScrollY;
-
-			// 底部场景：最后一段通常无法滚到锚点线，避免误判成倒数第二项。
 			const doc = document.documentElement;
 			const nearBottom =
 				currentScrollY + window.innerHeight >= doc.scrollHeight - 6;
-			if (nearBottom && !scrollingUp && currentScrollY > ACTIVE_TOP_OFFSET) {
-				const lastId = elements[elements.length - 1]?.id;
-				if (lastId) {
-					setActiveId((prev) => (prev === lastId ? prev : lastId));
-				}
-				return;
+			if (nearBottom && currentScrollY > ACTIVE_TOP_OFFSET) {
+				return elements[elements.length - 1]?.id;
 			}
 
-			// 常规场景按“已越过锚点线的最后一个分类”判定，避免分类间空隙导致回跳。
-			const anchorY = ACTIVE_TOP_OFFSET;
 			let current = elements[0]?.id;
 			for (const el of elements) {
 				const rect = el.getBoundingClientRect();
-				if (rect.top <= anchorY) {
+				if (rect.top <= ACTIVE_TOP_OFFSET) {
 					current = el.id;
 				} else {
 					break;
 				}
 			}
-			setActiveId((prev) => (prev === current ? prev : current));
+			return current;
 		};
 
-		let rafId = 0;
-		const flushActive = () => {
-			if (jumpGuard.scrolling || rafId) return;
-			rafId = requestAnimationFrame(() => {
-				rafId = 0;
-				findActiveByPosition();
-			});
+		const writeActive = (next: string | undefined) => {
+			if (!next || jumpGuard.scrolling) return;
+			setActiveId((prev) => (prev === next ? prev : next));
 		};
 
-		const scheduleAfterScrollEnd = () => {
-			if (jumpGuard.scrolling) return;
-			if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
-			scrollEndTimerRef.current = setTimeout(flushActive, SCROLL_END_DELAY);
+		const syncActiveByPosition = () => {
+			writeActive(resolveActiveByPosition());
+		};
+
+		const startScrollEndTracking = () => {
+			const cleanupScrollEnd = listenWindowScrollEnd(syncActiveByPosition);
+			let resizeRaf = 0;
+			const handleResize = () => {
+				if (resizeRaf) return;
+				resizeRaf = requestAnimationFrame(() => {
+					resizeRaf = 0;
+					syncActiveByPosition();
+				});
+			};
+			window.addEventListener("resize", handleResize, { passive: true });
+			return () => {
+				cleanupScrollEnd();
+				window.removeEventListener("resize", handleResize);
+				if (resizeRaf) cancelAnimationFrame(resizeRaf);
+			};
 		};
 
 		const applyInitialState = () => {
@@ -198,7 +226,7 @@ export function useActiveSectionWriter() {
 
 			const hasInitialHashTarget =
 				initialHashId.length > 0 &&
-				getElements().some((el) => el.id === initialHashId);
+				elements.some((el) => el.id === initialHashId);
 
 			const clearUrlHash = () => {
 				if (!window.location.hash) return;
@@ -209,39 +237,42 @@ export function useActiveSectionWriter() {
 			if (hasInitialHashTarget) {
 				setActiveId((prev) => (prev === initialHashId ? prev : initialHashId));
 				// 某些客户端跳转下 hash 定位时机会偏晚，主动补一次定位。
-				requestAnimationFrame(() => {
-					getElements()
+				hashScrollRaf = requestAnimationFrame(() => {
+					elements
 						.find((el) => el.id === initialHashId)
 						?.scrollIntoView({ behavior: "auto", block: "start" });
 				});
-				if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
-				scrollEndTimerRef.current = setTimeout(flushActive, SCROLL_END_DELAY * 2);
 				// 使用 hash 定位完成后，清理 URL 中的 #锚点，避免刷新后持续携带。
-				setTimeout(clearUrlHash, SCROLL_END_DELAY * 2 + 60);
+				clearHashTimer = setTimeout(
+					clearUrlHash,
+					SCROLL_END_DELAY * 2 + 60,
+				);
 			} else {
-				findActiveByPosition();
+				syncActiveByPosition();
 				// 无效 hash 也清掉，保持地址整洁。
 				if (rawHash) clearUrlHash();
 			}
 		};
 
-		let bootstrapTimer: ReturnType<typeof setTimeout> | null = null;
 		const bootstrap = () => {
-			if (getElements().length === 0) {
+			elements = collectElements();
+			if (elements.length === 0) {
 				bootstrapTimer = setTimeout(bootstrap, 80);
 				return;
 			}
 			applyInitialState();
+			trackingRaf = requestAnimationFrame(() => {
+				cleanupTracking = startScrollEndTracking();
+			});
 		};
 		bootstrap();
 
-		const cleanupSignals = listenWindowScrollSignals(scheduleAfterScrollEnd);
-
 		return () => {
-			cleanupSignals();
-			if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+			cleanupTracking();
 			if (bootstrapTimer) clearTimeout(bootstrapTimer);
-			if (rafId) cancelAnimationFrame(rafId);
+			if (clearHashTimer) clearTimeout(clearHashTimer);
+			if (hashScrollRaf) cancelAnimationFrame(hashScrollRaf);
+			if (trackingRaf) cancelAnimationFrame(trackingRaf);
 		};
 	}, [parentIds, pathname, trackedIds, setActiveId]);
 }
