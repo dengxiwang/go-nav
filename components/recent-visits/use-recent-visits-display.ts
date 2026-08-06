@@ -39,7 +39,9 @@ export function useRecentVisitsDisplay({
 	const minCardWidthPx = parseCssSizeToPx(minCardWidth);
 	const gridRef = useRef<HTMLDivElement>(null);
 	const lastLayoutKeyRef = useRef("");
-	const [displayCount, setDisplayCount] = useState(0);
+	// 路由返回时 useRecentVisits 会提供模块缓存，先完整显示已有卡片，
+	// 再由布局 effect 根据当前宽度收敛到最大行数，避免恢复滚动时先出现空高度。
+	const [displayCount, setDisplayCount] = useState(totalItems);
 
 	const applyDisplayCountToGrid = useCallback((count: number) => {
 		const grid = gridRef.current;

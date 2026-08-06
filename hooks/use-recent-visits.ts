@@ -20,15 +20,24 @@ export interface RecentVisit {
 }
 
 const EMPTY_VISITS: RecentVisit[] = [];
+// 路由切换时组件会卸载，但模块仍然存活。保留这份短期缓存，
+// 让返回首页时近期访问区可以在首个客户端渲染就复用已有数据，
+// 避免恢复滚动位置后再插入一块内容导致页面高度变化。
+let cachedVisits: RecentVisit[] = EMPTY_VISITS;
 
 function readVisits(): RecentVisit[] {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return [];
+		if (!raw) {
+			cachedVisits = EMPTY_VISITS;
+			return EMPTY_VISITS;
+		}
 		const parsed = JSON.parse(raw);
-		return Array.isArray(parsed) ? parsed : [];
+		cachedVisits = Array.isArray(parsed) ? parsed : EMPTY_VISITS;
+		return cachedVisits;
 	} catch {
-		return [];
+		cachedVisits = EMPTY_VISITS;
+		return EMPTY_VISITS;
 	}
 }
 
@@ -71,12 +80,13 @@ export function recordVisit(site: NavSite) {
 		timestamp: Date.now(),
 	};
 	const next = [entry, ...filtered].slice(0, MAX_ITEMS);
+	cachedVisits = next;
 	writeVisits(next);
 	window.dispatchEvent(new CustomEvent(EVENT_KEY, { detail: next }));
 }
 
 export function useRecentVisits() {
-	const [visits, setVisits] = useState<RecentVisit[]>(EMPTY_VISITS);
+	const [visits, setVisits] = useState<RecentVisit[]>(() => cachedVisits);
 	const [mounted, setMounted] = useState(false);
 	const syncRef = useRef(false);
 
@@ -94,6 +104,7 @@ export function useRecentVisits() {
 		const handler = (e: Event) => {
 			const next = (e as CustomEvent<RecentVisit[]>).detail;
 			if (!Array.isArray(next)) return;
+			cachedVisits = next;
 			setVisits((prev) => (sameVisits(prev, next) ? prev : next));
 		};
 		window.addEventListener(EVENT_KEY, handler);
@@ -117,6 +128,7 @@ export function useRecentVisits() {
 	}, [mounted, sync]);
 
 	const clearVisits = useCallback(() => {
+		cachedVisits = EMPTY_VISITS;
 		writeVisits(EMPTY_VISITS);
 		setVisits((prev) => (prev.length === 0 ? prev : EMPTY_VISITS));
 		window.dispatchEvent(new CustomEvent(EVENT_KEY, { detail: EMPTY_VISITS }));

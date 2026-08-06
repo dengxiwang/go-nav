@@ -43,12 +43,12 @@ export const RecentVisits = memo(function RecentVisits({
 			disableEntranceAnimation,
 		});
 
-	if (!mounted || !hasData) return null;
+	if (!hasData) return null;
 
 	return (
 		<div
 			ref={wrapperRef}
-			className="origin-top motion-reduce:transition-none"
+			className="recent-visits-entrance origin-top"
 			onTransitionEnd={handleTransitionEnd}
 			style={wrapperStyle}
 		>

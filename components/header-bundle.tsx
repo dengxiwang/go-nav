@@ -23,6 +23,11 @@ import {
     submissionConfigAtom,
 } from "@/lib/store/site";
 import { useJumpToSection } from "@/hooks/use-active-section";
+import {
+	clearStoredSearchEngineId,
+	getStoredSearchEngineId,
+	setStoredSearchEngineId,
+} from "@/lib/client/search-engine-preference";
 
 /**
  * 头部聚合组件：AppHeader + 移动端导航抽屉 + 搜索引擎抽屉。
@@ -170,9 +175,38 @@ function SearchHeader({
 	const [engineId, setEngineId] = useState<Key | null>(resolvedDefaultEngine);
 
 	useEffect(() => {
+		if (search.rememberLastEngine !== true) {
+			clearStoredSearchEngineId();
+			return;
+		}
+
+		const storedEngineId = getStoredSearchEngineId();
+		if (storedEngineId && engineOptions.includes(storedEngineId)) {
+			setEngineId(storedEngineId);
+			return;
+		}
+
+		if (engineId !== null && engineOptions.includes(String(engineId))) {
+			setStoredSearchEngineId(String(engineId));
+		} else {
+			clearStoredSearchEngineId();
+		}
+	}, [engineId, engineOptions, search.rememberLastEngine]);
+
+	useEffect(() => {
 		if (engineId !== null && engineOptions.includes(String(engineId))) return;
 		setEngineId(resolvedDefaultEngine);
 	}, [engineId, engineOptions, resolvedDefaultEngine]);
+
+	const handleEngineChange = useCallback((id: Key | null) => {
+		if (id === null) return;
+		setEngineId(id);
+		if (search.rememberLastEngine === true) {
+			setStoredSearchEngineId(String(id));
+		} else {
+			clearStoredSearchEngineId();
+		}
+	}, [search.rememberLastEngine]);
 
 	const openEngineDrawer = useCallback(
 		() => engineDrawerState.open(),
@@ -193,7 +227,7 @@ function SearchHeader({
 			},
 			engineState: {
 				value: engineId,
-				onChange: setEngineId,
+				onChange: handleEngineChange,
 			},
 			onDrawerOpen: openEngineDrawer,
 		}),
@@ -201,6 +235,7 @@ function SearchHeader({
 			engineId,
 			flatSites,
 			layout,
+			handleEngineChange,
 			openEngineDrawer,
 			resolvedDefaultEngine,
 			search.enableLocalSearch,
@@ -222,7 +257,7 @@ function SearchHeader({
 				engines={search.engines}
 				enableLocal={search.enableLocalSearch}
 				currentEngine={engineId}
-				onEngineChange={setEngineId}
+				onEngineChange={handleEngineChange}
 			/>
 		</>
 	);

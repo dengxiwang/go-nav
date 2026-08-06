@@ -45,6 +45,7 @@ export const DEFAULT_LAYOUT: Required<LayoutConfig> = {
 	linkTarget: "new",
 	autoUseIntranet: false,
 	enableSiteDetailPage: false,
+	showSiteDetailUrl: true,
 	showSubcategoryTabs: true,
 	showCategorySearch: false,
 };
@@ -68,6 +69,7 @@ const EMPTY_NAV: NavConfig = {
 	search: {
 		defaultEngine: "",
 		enableLocalSearch: false,
+		rememberLastEngine: false,
 		placeholder: "",
 		engines: [],
 	},

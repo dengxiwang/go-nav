@@ -418,6 +418,12 @@ data/
 					"description": "导航站项目",
 					"url": "https://github.com/dengxiwang/go-nav",
 					"icon": "/images/logo.svg",
+					"previewImage": "/uploads/go-nav-cover.webp",
+					"previewImages": [
+						"/uploads/go-nav-home.webp",
+						"/uploads/go-nav-admin.webp"
+					],
+					"detailMarkdown": "## 项目介绍\n\n支持 **Markdown** 详情正文。",
 					"tags": ["nav", "nextjs"]
 				}
 			],
@@ -428,6 +434,8 @@ data/
 ```
 
 分类支持多级嵌套。网站图标可以使用 emoji、本地路径或远程 URL。
+
+`description` 用于首页卡片摘要和本地搜索；`previewImage` 只作为预览图卡片的封面。开启网址详情页后，可以通过 `previewImages` 配置最多 8 张详情预览图，通过 `detailMarkdown` 配置支持 GFM 表格和普通换行的 Markdown 正文。未配置 `previewImages` 时，详情页会自动回退到 `previewImage`，已有数据无需迁移。Markdown 中的原始 HTML 不会执行。
 
 项目也支持 `nav.yaml` 和 `website.yaml`。设置 `DATA_FILE_FORMAT=yaml` 时优先使用 YAML；HTML 构建最终仍会输出浏览器使用的 `nav.json` 和 `website.json`。
 

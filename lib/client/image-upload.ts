@@ -8,7 +8,8 @@ const COMPRESSIBLE_TYPES = new Set([
 ]);
 
 export interface UploadImageOptions {
-	maxEdge: number;
+	/** 留空时保留原始像素尺寸。 */
+	maxEdge?: number;
 	quality: number;
 	minCompressBytes?: number;
 	compress?: boolean;
@@ -39,8 +40,10 @@ async function compressImageIfNeeded(
 	let bitmap: ImageBitmap | null = null;
 	try {
 		bitmap = await createImageBitmap(file);
-		const maxEdge = Math.max(1, options.maxEdge);
 		const longerEdge = Math.max(bitmap.width, bitmap.height);
+		const maxEdge = options.maxEdge
+			? Math.max(1, options.maxEdge)
+			: longerEdge;
 		const scale = longerEdge > maxEdge ? maxEdge / longerEdge : 1;
 		const width = Math.max(1, Math.round(bitmap.width * scale));
 		const height = Math.max(1, Math.round(bitmap.height * scale));

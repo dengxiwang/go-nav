@@ -46,6 +46,7 @@ export const FloatingActions = memo(function FloatingActions({
 	const [supportsHover, setSupportsHover] = useState(false);
 	const [siteLinkMode, setSiteLinkMode] = useState<SiteLinkMode>("public");
 	const rafRef = useRef(0);
+	const showTopRef = useRef(false);
 	const qrContainerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -53,8 +54,10 @@ export const FloatingActions = memo(function FloatingActions({
 			if (rafRef.current) return;
 			rafRef.current = requestAnimationFrame(() => {
 				const next = window.scrollY > 300;
-				// 相等性短路：避免滚动时频繁触发相同值的 setState 导致 memo 失效
-				setShowTop((prev) => (prev === next ? prev : next));
+				if (showTopRef.current !== next) {
+					showTopRef.current = next;
+					setShowTop(next);
+				}
 				rafRef.current = 0;
 			});
 		};

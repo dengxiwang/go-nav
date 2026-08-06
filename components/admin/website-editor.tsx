@@ -666,6 +666,10 @@ function LayoutEditor({
 			label: "右侧使用 Tabs 切换二级分类",
 			key: "showSubcategoryTabs",
 		},
+		{
+			label: "详情页展示网址链接",
+			key: "showSiteDetailUrl",
+		},
 		{ label: "显示页脚", key: "showFooter" },
 		{
 			label: "页脚显示二维码",

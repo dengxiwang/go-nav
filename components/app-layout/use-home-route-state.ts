@@ -60,12 +60,12 @@ export function useHomeRouteState({
 		return findSiteDetailEntryBySlug(detailEntries, detailSlug);
 	}, [detailEnabled, detailEntries, detailSlug]);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!isDetailRoute) return;
 		window.scrollTo({ top: 0, behavior: "auto" });
 	}, [isDetailRoute, pathname]);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!isHomeRoute) return;
 
 		const shouldRestore = consumeHomeRestoreRequest();
@@ -84,22 +84,73 @@ export function useHomeRouteState({
 			setActiveId(snapshot.activeId);
 		}
 
-		const restoreSmooth = () =>
-			window.scrollTo({ top: snapshot.scrollY, behavior: "smooth" });
-		const restoreFinal = () =>
-			window.scrollTo({ top: snapshot.scrollY, behavior: "auto" });
-		const timers = [
-			window.setTimeout(restoreSmooth, 40),
-			window.setTimeout(restoreFinal, 900),
-		];
+		const restoreScroll = () => {
+			// 恢复时不要使用 smooth：页面刚从详情页切回时，平滑滚动会和
+			// React/Next 的布局提交以及近期访问区挂载同时发生，造成明显的
+			// “追着页面滚”的感觉。内容还在补齐时只做瞬时、可重复的定位。
+			const maxScrollY = Math.max(
+				0,
+				document.documentElement.scrollHeight - window.innerHeight,
+			);
+			const nextScrollY = Math.min(Math.max(0, snapshot.scrollY), maxScrollY);
+			window.scrollTo(0, nextScrollY);
+		};
 
-		requestAnimationFrame(restoreSmooth);
+		let firstRestoreRaf = 0;
+		let secondRestoreRaf = 0;
+		let settleTimer: number | null = null;
+		let resizeObserver: ResizeObserver | null = null;
+		let mutationObserver: MutationObserver | null = null;
+		restoreScroll();
+		// 近期访问区从 localStorage 水合、图片完成布局等都可能发生在
+		// 当前提交之后。最多补两帧；若页面高度仍在变化，则只在变化时
+		// 瞬时重定位，直到短暂稳定后解除监听。
+		firstRestoreRaf = requestAnimationFrame(() => {
+			restoreScroll();
+			secondRestoreRaf = requestAnimationFrame(restoreScroll);
+		});
+
+		const stopObservingLayout = () => {
+			if (settleTimer !== null) window.clearTimeout(settleTimer);
+			settleTimer = null;
+			resizeObserver?.disconnect();
+			resizeObserver = null;
+			mutationObserver?.disconnect();
+			mutationObserver = null;
+		};
+
+		const scheduleStop = () => {
+			if (settleTimer !== null) window.clearTimeout(settleTimer);
+			settleTimer = window.setTimeout(stopObservingLayout, 180);
+		};
+		const handleLayoutChange = () => {
+			restoreScroll();
+			scheduleStop();
+		};
+
+		if (typeof ResizeObserver !== "undefined") {
+			resizeObserver = new ResizeObserver(handleLayoutChange);
+			resizeObserver.observe(document.documentElement);
+			resizeObserver.observe(document.body);
+		}
+		if (typeof MutationObserver !== "undefined") {
+			mutationObserver = new MutationObserver(handleLayoutChange);
+			mutationObserver.observe(
+				document.querySelector("main") ?? document.body,
+				{
+					attributes: true,
+					childList: true,
+					subtree: true,
+				},
+			);
+		}
+		scheduleStop();
 		clearHomeSnapshot();
 
 		return () => {
-			for (const timer of timers) {
-				window.clearTimeout(timer);
-			}
+			if (firstRestoreRaf) cancelAnimationFrame(firstRestoreRaf);
+			if (secondRestoreRaf) cancelAnimationFrame(secondRestoreRaf);
+			stopObservingLayout();
 		};
 	}, [isHomeRoute, setActiveId]);
 

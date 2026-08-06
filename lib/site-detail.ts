@@ -11,6 +11,41 @@ export interface SiteDetailEntry {
 
 const SITE_DETAIL_BASE_PATH = "/site";
 
+export const MAX_SITE_DETAIL_PREVIEW_IMAGES = 8;
+
+/**
+ * 清理详情页多图配置。运行时 JSON 可能绕过 TypeScript，因此这里仍做类型检查。
+ */
+export function normalizeSitePreviewImages(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+
+	const result: string[] = [];
+	const seen = new Set<string>();
+	for (const item of value) {
+		if (typeof item !== "string") continue;
+		const url = item.trim();
+		if (!url || seen.has(url)) continue;
+		seen.add(url);
+		result.push(url);
+		if (result.length >= MAX_SITE_DETAIL_PREVIEW_IMAGES) break;
+	}
+	return result;
+}
+
+/**
+ * 详情页优先展示 previewImages；没有有效数组时兼容旧的 previewImage 单图。
+ */
+export function resolveSiteDetailPreviewImages(
+	site: Pick<NavSite, "previewImage" | "previewImages">,
+): string[] {
+	const images = normalizeSitePreviewImages(site.previewImages);
+	if (images.length > 0) return images;
+
+	const legacyImage =
+		typeof site.previewImage === "string" ? site.previewImage.trim() : "";
+	return legacyImage ? [legacyImage] : [];
+}
+
 export function buildSiteDetailSlug(
 	site: Pick<NavSite, "id" | "title" | "url">,
 ): string {

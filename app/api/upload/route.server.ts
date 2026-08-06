@@ -4,7 +4,6 @@ import { SESSION_COOKIE, verifySession } from "@/lib/server/auth";
 import { saveImageAsset } from "@/lib/server/image-hosting";
 import { readNav } from "@/lib/server/store";
 
-const MAX_UPLOAD_SIZE = 2 * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = new Map([
 	["image/png", [".png"]],
 	["image/jpeg", [".jpg", ".jpeg"]],
@@ -51,9 +50,6 @@ export async function POST(req: Request) {
 		const file = form.get("file");
 		if (!(file instanceof Blob)) {
 			return NextResponse.json({ error: "缺少 file 字段" }, { status: 400 });
-		}
-		if (file.size > MAX_UPLOAD_SIZE) {
-			return NextResponse.json({ error: "文件过大 (最大 2MB)" }, { status: 413 });
 		}
 		const originalName =
 			(file as unknown as { name?: string }).name || `upload-${Date.now()}.bin`;

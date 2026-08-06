@@ -79,6 +79,8 @@ export interface LayoutConfig {
 	autoUseIntranet?: boolean;
 	/** 点击网站卡片时是否先进入"网址详情页" */
 	enableSiteDetailPage?: boolean;
+	/** 是否在网址详情页的信息区域展示网址链接 */
+	showSiteDetailUrl?: boolean;
 	/** 是否在右侧使用 Tabs 展示二级分类（开启时：左侧仅展示父级分类，右侧用 Tabs 切换二级分类；关闭时：左侧树形展示父子分类，右侧平铺所有分类卡片） */
 	showSubcategoryTabs?: boolean;
 	/** 是否显示分类导航栏搜索框（开启后在左侧导航顶部显示搜索框，输入后过滤分类） */
@@ -188,6 +190,10 @@ export interface NavSite {
 	icon?: string;
 	/** 网站预览图 URL（用于预览图卡片样式） */
 	previewImage?: string;
+	/** 详情页预览图 URL 列表；未配置时详情页回退到 previewImage */
+	previewImages?: string[];
+	/** 详情页 Markdown 正文；不参与卡片摘要和本地搜索 */
+	detailMarkdown?: string;
 	/** 图标背景颜色 (hex 格式，如 #FF5733) */
 	bgColor?: string;
 	/** 图标区域内边距，如 "2px"、"4px" */
@@ -342,6 +348,8 @@ export interface NavConfig {
 		showEngineSelector?: boolean;
 		/** 是否启用搜索联想词（非本地搜索时显示百度搜索联想词） */
 		enableSuggestion?: boolean;
+		/** 是否在下次打开首页时恢复上次选择的搜索引擎（默认关闭） */
+		rememberLastEngine?: boolean;
 		/** 是否启用全局 Tab 键快捷聚焦到搜索框（默认 true）
 		 *  开启后：页面任意位置（包括侧边栏/卡片等）按 Tab 都会跳入搜索框；
 		 *  主要供键盘用户快速进入搜索。关闭后使用浏览器原生 Tab 顺序。 */
