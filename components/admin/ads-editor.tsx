@@ -409,6 +409,10 @@ function AdPlacementPanel({
 									minValue={0}
 									maxValue={48}
 									step={1}
+									formatOptions={{
+										maximumFractionDigits: 0,
+										useGrouping: false,
+									}}
 									onChange={onGapChange}
 								>
 									<Label>广告间距（px）</Label>
