@@ -7,7 +7,9 @@ import {
     InputGroup,
     Label,
     Link,
+    ListBox,
     Modal,
+    Select,
     Tabs,
     TextArea,
     TextField,
@@ -953,6 +955,10 @@ export function SitesEditor() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingSite, setEditingSite] = useState<NavSite | null>(null);
 	const [editingIndex, setEditingIndex] = useState<number>(-1);
+	const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+	const [editingSourceCategoryId, setEditingSourceCategoryId] = useState<
+		string | null
+	>(null);
 	const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 	const [fetchingInfo, setFetchingInfo] = useState(false);
 	const [capturingPreview, setCapturingPreview] = useState(false);
@@ -1082,6 +1088,11 @@ export function SitesEditor() {
 			getSiteSortableId(selectedCategory, currentSites.indexOf(site)),
 		);
 	}, [currentSites, filteredSites, selectedCategory]);
+
+	const selectableCategories = useMemo(
+		() => flatCategories.filter((category) => !category.hasChildren),
+		[flatCategories],
+	);
 
 	if (!isClientReady) {
 		return <Loading />;
@@ -1261,6 +1272,14 @@ export function SitesEditor() {
 		onChange(newData);
 	};
 
+	const closeSiteModal = () => {
+		setIsModalOpen(false);
+		setEditingSite(null);
+		setEditingIndex(-1);
+		setEditingCategoryId(null);
+		setEditingSourceCategoryId(null);
+	};
+
 	const openAddModal = () => {
 		setEditingSite({
 			title: "",
@@ -1276,23 +1295,31 @@ export function SitesEditor() {
 			tags: [],
 		});
 		setEditingIndex(-1);
+		setEditingCategoryId(selectedCategory);
+		setEditingSourceCategoryId(null);
 		setIsModalOpen(true);
 	};
 
 	const openEditModal = (site: NavSite, index: number) => {
 		setEditingSite({ ...site });
 		setEditingIndex(index);
+		setEditingCategoryId(selectedCategory);
+		setEditingSourceCategoryId(selectedCategory);
 		setIsModalOpen(true);
 	};
 
 	const saveSite = async () => {
-		if (!editingSite || !selectedCategory) return;
+		if (!editingSite) return;
 		if (!editingSite.title.trim()) {
 			toast.warning("网站名称不能为空");
 			return;
 		}
 		if (!editingSite.url.trim()) {
 			toast.warning("网站地址不能为空");
+			return;
+		}
+		if (!editingCategoryId) {
+			toast.warning("请选择一个分类");
 			return;
 		}
 		const siteToSave: NavSite = { ...editingSite };
@@ -1308,19 +1335,51 @@ export function SitesEditor() {
 			delete siteToSave.detailMarkdown;
 		}
 		if (editingIndex >= 0) {
-			updateSites((sites) => {
-				const copy = [...sites];
-				copy[editingIndex] = siteToSave;
-				return copy;
-			});
+			const sourceCategoryId = editingSourceCategoryId ?? selectedCategory;
+			if (!sourceCategoryId) return;
+			const sourceCategory = findCategoryById(value.categories, sourceCategoryId);
+			if (!sourceCategory?.sites?.[editingIndex]) {
+				toast.warning("原网址不存在，无法保存修改");
+				return;
+			}
+
+			let nextCategories = value.categories;
+			if (sourceCategoryId === editingCategoryId) {
+				nextCategories = updateCategorySites(
+					nextCategories,
+					sourceCategoryId,
+					(sites) => {
+						const copy = [...sites];
+						copy[editingIndex] = siteToSave;
+						return copy;
+					},
+				);
+			} else {
+				nextCategories = updateCategorySites(
+					nextCategories,
+					sourceCategoryId,
+					(sites) => sites.filter((_, index) => index !== editingIndex),
+				);
+				nextCategories = updateCategorySites(
+					nextCategories,
+					editingCategoryId,
+					(sites) => [...sites, siteToSave],
+				);
+			}
+			onChange({ ...value, categories: nextCategories });
 			toast.success(`网址"${editingSite.title}"已更新，记得点击保存`);
 		} else {
-			updateSites((sites) => [...sites, siteToSave]);
+			const nextCategories = updateCategorySites(
+				value.categories,
+				editingCategoryId,
+				(sites) => [...sites, siteToSave],
+			);
+			onChange({ ...value, categories: nextCategories });
 			toast.success(`网址"${editingSite.title}"已添加，记得点击保存`);
 		}
-		setIsModalOpen(false);
-		setEditingSite(null);
-		setEditingIndex(-1);
+		setSelectedCategory(editingCategoryId);
+		setSearch("");
+		closeSiteModal();
 	};
 
 	const fetchWebsiteInfo = async () => {
@@ -1711,7 +1770,7 @@ export function SitesEditor() {
 
 					<Modal.Backdrop
 						isOpen={isModalOpen}
-						onOpenChange={(open) => !open && setIsModalOpen(false)}
+						onOpenChange={(open) => !open && closeSiteModal()}
 					>
 						<Modal.Container size="lg">
 							<Modal.Dialog>
@@ -1723,14 +1782,37 @@ export function SitesEditor() {
 								</Modal.Header>
 								<Modal.Body>
 									<div className="flex flex-col gap-4">
-										<div className="flex flex-col gap-1">
-											<span className="text-sm font-medium">分类</span>
-											<span className="rounded-lg bg-default/40 px-3 py-2 text-sm border border-default">
-												{selectedCategory
-													? getCategoryPath(selectedCategory)
-													: "-"}
-											</span>
-										</div>
+										<Select
+											className="w-full"
+											placeholder="选择分类"
+											value={editingCategoryId}
+											onChange={(value) =>
+												setEditingCategoryId(value ? String(value) : null)
+											}
+											isDisabled={selectableCategories.length === 0}
+										>
+											<Label>分类</Label>
+											<Select.Trigger>
+												<Select.Value />
+												<Select.Indicator />
+											</Select.Trigger>
+											<Select.Popover>
+												<ListBox>
+													{selectableCategories.map((category) => (
+														<ListBox.Item
+															key={category.id}
+															id={category.id}
+															textValue={getCategoryPath(category.id)}
+														>
+															<span className="truncate">
+																{getCategoryPath(category.id)}
+															</span>
+															<ListBox.ItemIndicator />
+														</ListBox.Item>
+													))}
+												</ListBox>
+											</Select.Popover>
+										</Select>
 										<TextField
 											value={editingSite?.url ?? ""}
 											onChange={(v) =>
@@ -1906,7 +1988,7 @@ export function SitesEditor() {
 								<Modal.Footer>
 									<Button
 										variant="tertiary"
-										onPress={() => setIsModalOpen(false)}
+										onPress={closeSiteModal}
 									>
 										取消
 									</Button>
