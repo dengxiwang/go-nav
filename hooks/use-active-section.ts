@@ -9,7 +9,7 @@ import {
     showSubcategoryTabsAtom,
 } from "@/lib/store/site";
 
-/** IntersectionObserver 不可用时的滚动停止兜底延迟。 */
+/** 原生 scrollend 漏发或不可用时的滚动停止兜底延迟。 */
 const SCROLL_END_DELAY = 140;
 /** 跳转后若长时间持续滚动，保护态的最长保留时间 */
 const JUMP_GUARD_MAX_MS = 3600;
@@ -36,26 +36,32 @@ function listenWindowScrollSignals(listener: () => void) {
 	};
 }
 
-/** 优先使用原生 scrollend；旧浏览器才在连续 scroll 上维护兜底定时器。 */
+/** 原生 scrollend 与定时兜底并行，避免页面导航后偶发漏掉停止事件。 */
 function listenWindowScrollEnd(listener: () => void) {
 	if (typeof window === "undefined") return () => {};
 
 	const supportsNativeScrollEnd =
 		"onscrollend" in (window as unknown as Record<string, unknown>);
-	if (supportsNativeScrollEnd) {
-		window.addEventListener("scrollend", listener, { passive: true });
-		return () => window.removeEventListener("scrollend", listener);
-	}
-
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	const flush = () => {
+		if (timer) clearTimeout(timer);
+		timer = null;
+		listener();
+	};
 	const schedule = () => {
 		if (timer) clearTimeout(timer);
-		timer = setTimeout(listener, SCROLL_END_DELAY);
+		timer = setTimeout(flush, SCROLL_END_DELAY);
 	};
 
 	window.addEventListener("scroll", schedule, { passive: true });
+	if (supportsNativeScrollEnd) {
+		window.addEventListener("scrollend", flush, { passive: true });
+	}
 	return () => {
 		window.removeEventListener("scroll", schedule);
+		if (supportsNativeScrollEnd) {
+			window.removeEventListener("scrollend", flush);
+		}
 		if (timer) clearTimeout(timer);
 	};
 }
@@ -189,6 +195,14 @@ export function useActiveSectionWriter() {
 		const startScrollEndTracking = () => {
 			const cleanupScrollEnd = listenWindowScrollEnd(syncActiveByPosition);
 			let resizeRaf = 0;
+			const handlePageHide = () => {
+				activeJumpGuardCleanup?.();
+			};
+			const handlePageShow = () => {
+				activeJumpGuardCleanup?.();
+				elements = collectElements();
+				syncActiveByPosition();
+			};
 			const handleResize = () => {
 				if (resizeRaf) return;
 				resizeRaf = requestAnimationFrame(() => {
@@ -197,9 +211,13 @@ export function useActiveSectionWriter() {
 				});
 			};
 			window.addEventListener("resize", handleResize, { passive: true });
+			window.addEventListener("pagehide", handlePageHide);
+			window.addEventListener("pageshow", handlePageShow);
 			return () => {
 				cleanupScrollEnd();
 				window.removeEventListener("resize", handleResize);
+				window.removeEventListener("pagehide", handlePageHide);
+				window.removeEventListener("pageshow", handlePageShow);
 				if (resizeRaf) cancelAnimationFrame(resizeRaf);
 			};
 		};
