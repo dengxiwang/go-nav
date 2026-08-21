@@ -11,4 +11,4 @@ export const COMPACT_CARD_SURFACE_CLASS =
 export const PREVIEW_CARD_SURFACE_CLASS =
 	"rounded-2xl border border-black/10 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-zinc-900";
 export const FLOATING_ACTION_TRANSITION_CLASS =
-	"transition-[transform,box-shadow,opacity,background-color]";
+	"transition-[transform,translate,scale,rotate,box-shadow,opacity,background-color]";

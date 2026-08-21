@@ -15,10 +15,12 @@ import { useState } from "react";
 import { BiBookmarkPlus, BiEnvelope } from "react-icons/bi";
 import type { SubmissionInput } from "@/types";
 import {
+    isSameSubmissionUrl,
     normalizeSubmissionInput,
     SUBMISSION_FIELD_LIMITS,
 } from "@/lib/submission";
 import {
+    flatSitesAtom,
     submissionConfigAtom,
     submissionDialogOpenAtom,
 } from "@/lib/store/site";
@@ -61,6 +63,7 @@ export function SubmissionDialog({
 	deploymentMode: SubmissionDeploymentMode;
 }) {
 	const config = useAtomValue(submissionConfigAtom);
+	const publishedSites = useAtomValue(flatSitesAtom);
 	const [isOpen, setIsOpen] = useAtom(submissionDialogOpenAtom);
 	const [form, setForm] = useState<SubmissionInput>(EMPTY_FORM);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,6 +88,13 @@ export function SubmissionDialog({
 		try {
 			const input = normalizeSubmissionInput(form);
 			if (!input.title) throw new Error("请填写网站名称");
+			const publishedSite = publishedSites.find((site) =>
+				isSameSubmissionUrl(site.url, input.url),
+			);
+			if (publishedSite) {
+				const message = `该网址已被收录（${publishedSite.title}），无需重复提交`;
+				throw new Error(message);
+			}
 
 			if (isStatic) {
 				const email = config.staticEmail.trim();

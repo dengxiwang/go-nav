@@ -35,17 +35,20 @@ export const AppFooter = memo(function AppFooter({
 	const qrCode = useAtomValue(navQrCodeAtom);
 	const qrCodeText = useAtomValue(navQrCodeTextAtom);
 	const footerLinks = useAtomValue(footerLinksAtom);
+	const visibleFooterLinks = footerLinks
+		.map((item) => ({ ...item, href: item.href.trim() }))
+		.filter((item) => item.href !== "" && item.href !== "#");
 
 	return (
 		<footer className="w-full p-6">
 			<div>
 				<div className="flex flex-col items-center gap-8 md:flex-row md:items-start md:justify-between">
 					<div className="flex flex-col items-center gap-3 md:items-start">
-						{footerLinks.length > 0 ? (
+						{visibleFooterLinks.length > 0 ? (
 							<>
 								<div className="text-sm font-medium">友情链接</div>
 								<nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 md:justify-start">
-									{footerLinks.map((item) => {
+									{visibleFooterLinks.map((item) => {
 										const isExternal = /^https?:\/\//.test(item.href);
 
 										return (
