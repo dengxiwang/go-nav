@@ -60,7 +60,7 @@ export function HtmlAdminRuntime({ children }: { children: ReactNode }) {
 				<main className="flex min-h-dvh items-center justify-center bg-background px-6 text-foreground">
 					<div className="w-full max-w-xl rounded-2xl border border-danger/30 bg-danger-soft p-6 text-danger-soft-foreground">
 						<h1 className="text-lg font-semibold">配置后台加载失败</h1>
-						<p className="mt-2 break-words text-sm leading-6">{error}</p>
+						<p className="mt-2 wrap-break-word text-sm leading-6">{error}</p>
 						<p className="mt-3 text-sm leading-6">
 							请确认 nav.json 与 website.json 位于网站根目录，并通过
 							HTTP/HTTPS 访问。

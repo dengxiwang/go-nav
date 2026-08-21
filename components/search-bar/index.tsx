@@ -28,6 +28,7 @@ export function SearchBar({
 		enableLocal,
 		enableSuggestion = false,
 		enableTabFocus = true,
+		engineSelectorWidth,
 		placeholder,
 		sites,
 		showEngineSelector = true,
@@ -137,6 +138,7 @@ export function SearchBar({
 				<SearchBarEngineSelect
 					engineId={engineId}
 					engineOptions={engineOptions}
+					engineSelectorWidth={engineSelectorWidth}
 					onEngineChange={setEngineId}
 				/>
 			) : null}

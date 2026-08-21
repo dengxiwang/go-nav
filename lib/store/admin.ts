@@ -12,6 +12,7 @@ import {
 	downloadConfigZip,
 	isHtmlDeployment,
 } from "@/lib/client/html-admin";
+import { DEFAULT_ENGINE_SELECTOR_WIDTH } from "@/lib/search-config";
 import type {
     AdConfig,
     NavCategory,
@@ -40,6 +41,7 @@ const EMPTY_NAV: NavConfig = {
 	search: {
 		defaultEngine: "",
 		enableLocalSearch: false,
+		engineSelectorWidth: DEFAULT_ENGINE_SELECTOR_WIDTH,
 		rememberLastEngine: false,
 		placeholder: "",
 		engines: [],

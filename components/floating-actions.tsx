@@ -148,7 +148,7 @@ export const FloatingActions = memo(function FloatingActions({
 		? "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:translate-x-0 [@media(hover:hover)]:group-hover:scale-100 -mr-2 [@media(hover:hover)]:group-hover:opacity-100"
 		: "";
 	const qrPanelPositionClass =
-		`absolute bottom-0 right-[calc(100%+1.5rem)] z-10 origin-bottom-right translate-x-3 scale-[0.96] opacity-0 ${FLOATING_ACTION_TRANSITION_CLASS} ${SHARED_SPRING_EASE_CLASS} duration-[260ms] will-change-[translate,scale,opacity] motion-reduce:translate-x-0 motion-reduce:scale-100 motion-reduce:transition-none`;
+		`absolute bottom-0 right-[calc(100%+1.5rem)] z-10 origin-bottom-right translate-x-3 scale-[0.96] opacity-0 ${FLOATING_ACTION_TRANSITION_CLASS} ${SHARED_SPRING_EASE_CLASS} duration-260 will-change-[translate,scale,opacity] motion-reduce:translate-x-0 motion-reduce:scale-100 motion-reduce:transition-none`;
 
 	return (
 		<div className="fixed bottom-8 right-6 z-50 flex flex-col items-center gap-3">
