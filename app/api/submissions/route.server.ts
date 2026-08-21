@@ -22,6 +22,7 @@ import {
 	writeWebsiteData,
 } from "@/lib/server/store";
 import {
+	isSameSubmissionUrl,
 	normalizeSubmissionInput,
 	normalizeSubmissionUrl,
 	resolveSubmissionConfig,
@@ -139,19 +140,10 @@ function consumeRateLimit(key: string): boolean {
 	return true;
 }
 
-function canonicalUrl(value: string): string {
-	try {
-		return normalizeSubmissionUrl(value).replace(/\/$/, "").toLowerCase();
-	} catch {
-		return value.trim().replace(/\/$/, "").toLowerCase();
-	}
-}
-
 function hasPendingDuplicate(items: SiteSubmission[], url: string): boolean {
-	const normalized = canonicalUrl(url);
 	return items.some(
 		(item) =>
-			item.status === "pending" && canonicalUrl(item.url) === normalized,
+			item.status === "pending" && isSameSubmissionUrl(item.url, url),
 	);
 }
 
@@ -173,6 +165,16 @@ export async function POST(req: Request) {
 		}
 		return await withSubmissionMutationLock(() => {
 			const data = readSubmissionData();
+			if (
+				allSites(readWebsiteData().categories).some((site) =>
+					isSameSubmissionUrl(site.url, input.url),
+				)
+			) {
+				return json(
+					{ error: "该网址已被收录，无需重复提交" },
+					{ status: 409 },
+				);
+			}
 			if (hasPendingDuplicate(data.submissions, input.url)) {
 				return json(
 					{ error: "该网址已经在待审核队列中，请勿重复提交" },
@@ -334,7 +336,7 @@ export async function PATCH(req: Request) {
 			const site = parseApprovedSite(body.site, current);
 			if (
 				allSites(websiteData.categories).some(
-					(item) => canonicalUrl(item.url) === canonicalUrl(site.url),
+					(item) => isSameSubmissionUrl(item.url, site.url),
 				)
 			) {
 				return json({ error: "该网址已存在于网站列表中" }, { status: 409 });

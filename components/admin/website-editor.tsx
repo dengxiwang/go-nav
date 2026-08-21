@@ -526,7 +526,7 @@ function FooterEditor({
 						onPatch({
 							footerLinks: [
 								...(value.footerLinks ?? []),
-								{ label: "新链接", href: "#" },
+								{ label: "新链接", href: "" },
 							],
 						})
 					}
@@ -562,7 +562,10 @@ function FooterEditor({
 						}}
 					>
 						<Label className="sr-only">href</Label>
-						<Input placeholder="跳转链接" variant="secondary" />
+						<Input
+							placeholder="https://example.com 或 /about"
+							variant="secondary"
+						/>
 					</TextField>
 					<Button
 						size="sm"

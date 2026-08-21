@@ -41,6 +41,23 @@ export function normalizeSubmissionUrl(raw: string): string {
 	return parsed.toString();
 }
 
+/**
+ * 生成投稿网址的比较键，统一忽略大小写、末尾斜杠和 URL hash。
+ * 无效的历史数据也会回退为稳定字符串，避免重复检查本身抛错。
+ */
+export function submissionUrlKey(raw: string): string {
+	try {
+		return normalizeSubmissionUrl(raw).replace(/\/$/, "").toLowerCase();
+	} catch {
+		return raw.trim().replace(/\/$/, "").toLowerCase();
+	}
+}
+
+export function isSameSubmissionUrl(left: string, right: string): boolean {
+	const leftKey = submissionUrlKey(left);
+	return Boolean(leftKey) && leftKey === submissionUrlKey(right);
+}
+
 function cleanOptional(value: string | undefined, maxLength: number): string {
 	return (value ?? "").trim().slice(0, maxLength);
 }

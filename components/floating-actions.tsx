@@ -19,7 +19,10 @@ import {
 	subscribeSiteLinkMode,
 	type SiteLinkMode,
 } from "@/lib/client/site-link";
-import { FLOATING_ACTION_TRANSITION_CLASS } from "./ui/ui.constants";
+import {
+	FLOATING_ACTION_TRANSITION_CLASS,
+	SHARED_SPRING_EASE_CLASS,
+} from "./ui/ui.constants";
 
 /**
  * 悬浮按钮（Jotai 订阅版）：
@@ -139,13 +142,13 @@ export const FloatingActions = memo(function FloatingActions({
 	}, [siteLinkMode]);
 
 	const qrPanelOpenClass = showQrPanel
-		? "pointer-events-auto translate-x-0 opacity-100"
+		? "pointer-events-auto translate-x-0 scale-100 opacity-100"
 		: "pointer-events-none";
 	const qrPanelHoverClass = supportsHover
-		? "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:translate-x-0 -mr-2 [@media(hover:hover)]:group-hover:opacity-100"
+		? "[@media(hover:hover)]:group-hover:pointer-events-auto [@media(hover:hover)]:group-hover:translate-x-0 [@media(hover:hover)]:group-hover:scale-100 -mr-2 [@media(hover:hover)]:group-hover:opacity-100"
 		: "";
 	const qrPanelPositionClass =
-		`absolute bottom-0 right-[calc(100%+1.5rem)] z-10 translate-x-2 opacity-0 ${FLOATING_ACTION_TRANSITION_CLASS} duration-200`;
+		`absolute bottom-0 right-[calc(100%+1.5rem)] z-10 origin-bottom-right translate-x-3 scale-[0.96] opacity-0 ${FLOATING_ACTION_TRANSITION_CLASS} ${SHARED_SPRING_EASE_CLASS} duration-[260ms] will-change-[translate,scale,opacity] motion-reduce:translate-x-0 motion-reduce:scale-100 motion-reduce:transition-none`;
 
 	return (
 		<div className="fixed bottom-8 right-6 z-50 flex flex-col items-center gap-3">
@@ -199,7 +202,7 @@ export const FloatingActions = memo(function FloatingActions({
 								{qrCodeText ?? "扫码关注，获取更多内容"}
 							</p>
 
-							<div className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 border-r border-t bg-(--primary-foreground)" />
+							<div className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-(--primary-foreground)" />
 						</div>
 					</div>
 
