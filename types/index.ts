@@ -346,6 +346,8 @@ export interface NavConfig {
 		engines: SearchEngine[];
 		/** 是否显示搜索引擎切换器（设为 false 则只用默认引擎） */
 		showEngineSelector?: boolean;
+		/** 桌面端搜索引擎切换器宽度（像素，默认 120，范围 100–240） */
+		engineSelectorWidth?: number;
 		/** 是否启用搜索联想词（非本地搜索时显示百度搜索联想词） */
 		enableSuggestion?: boolean;
 		/** 是否在下次打开首页时恢复上次选择的搜索引擎（默认关闭） */

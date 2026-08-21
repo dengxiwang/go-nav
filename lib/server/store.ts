@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { NavConfig, WebsiteData } from "@/types";
+import { DEFAULT_ENGINE_SELECTOR_WIDTH } from "@/lib/search-config";
 import {
     getStructuredFileFormat,
     listStructuredDataFileCandidates,
@@ -60,6 +61,7 @@ export const DEFAULT_NAV: NavConfig = {
 	search: {
 		defaultEngine: "local",
 		enableLocalSearch: true,
+		engineSelectorWidth: DEFAULT_ENGINE_SELECTOR_WIDTH,
 		rememberLastEngine: false,
 		showEngineSelector: true,
 		enableSuggestion: true,

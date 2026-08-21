@@ -4,8 +4,10 @@ import {
 	AlertDialog,
 	Button,
 	Chip,
+	Description,
 	Input,
 	Label,
+	NumberField,
 	Separator,
 	Table,
 	Tabs,
@@ -13,6 +15,12 @@ import {
 } from "@heroui/react";
 import type { NavConfig, SearchEngine } from "@/types";
 import { useAtom } from "jotai";
+import {
+	DEFAULT_ENGINE_SELECTOR_WIDTH,
+	MAX_ENGINE_SELECTOR_WIDTH,
+	MIN_ENGINE_SELECTOR_WIDTH,
+	resolveEngineSelectorWidth,
+} from "@/lib/search-config";
 import { navAtom } from "@/lib/store/admin";
 import { IconPicker } from "./icon-picker";
 import { AdminSwitch } from "./admin-switch";
@@ -120,7 +128,7 @@ export function EnginesEditor() {
 							</p>
 						</div>
 
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 							<div className="flex flex-col gap-2">
 								<Label className="text-sm font-medium">
 									默认引擎 ID（本站请设置为：local）
@@ -144,6 +152,35 @@ export function EnginesEditor() {
 									<Input placeholder="搜索你想要的内容..." />
 								</TextField>
 							</div>
+
+							<NumberField
+								fullWidth
+								value={resolveEngineSelectorWidth(s.engineSelectorWidth)}
+								minValue={MIN_ENGINE_SELECTOR_WIDTH}
+								maxValue={MAX_ENGINE_SELECTOR_WIDTH}
+								step={4}
+								formatOptions={{
+									maximumFractionDigits: 0,
+									useGrouping: false,
+								}}
+								onChange={(next) => {
+									if (next == null) return;
+									patch({
+										engineSelectorWidth: resolveEngineSelectorWidth(next),
+									});
+								}}
+							>
+								<Label>切换器宽度（px）</Label>
+								<NumberField.Group>
+									<NumberField.DecrementButton />
+									<NumberField.Input />
+									<NumberField.IncrementButton />
+								</NumberField.Group>
+								<Description>
+									{MIN_ENGINE_SELECTOR_WIDTH}–{MAX_ENGINE_SELECTOR_WIDTH}，默认
+									 {DEFAULT_ENGINE_SELECTOR_WIDTH}
+								</Description>
+							</NumberField>
 						</div>
 
 						<Separator />
@@ -210,10 +247,10 @@ export function EnginesEditor() {
 								<Table.ScrollContainer>
 									<Table.Content
 										aria-label="搜索引擎列表"
-										className="min-w-[96rem]"
+										className="min-w-384"
 									>
 										<Table.Header>
-											<Table.Column className="min-w-[26rem] whitespace-nowrap">
+											<Table.Column className="min-w-104 whitespace-nowrap">
 												图标
 											</Table.Column>
 											<Table.Column
@@ -225,7 +262,7 @@ export function EnginesEditor() {
 											<Table.Column className="min-w-56 whitespace-nowrap">
 												名称
 											</Table.Column>
-											<Table.Column className="min-w-[26rem] whitespace-nowrap">
+											<Table.Column className="min-w-104 whitespace-nowrap">
 												URL (使用 {"{query}"} 占位)
 											</Table.Column>
 											<Table.Column className="w-40 whitespace-nowrap">
@@ -274,7 +311,7 @@ export function EnginesEditor() {
 				onOpenChange={(open) => !open && setDeleteConfirm(null)}
 			>
 				<AlertDialog.Container placement="center" size="sm">
-					<AlertDialog.Dialog className="sm:max-w-[400px]">
+					<AlertDialog.Dialog className="sm:max-w-100">
 						<AlertDialog.Header>
 							<AlertDialog.Icon status="danger">
 								<BiTrash />

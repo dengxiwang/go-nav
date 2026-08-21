@@ -17,6 +17,7 @@ export interface HeaderSearchConfig {
 	enableLocal: boolean;
 	enableSuggestion?: boolean;
 	enableTabFocus?: boolean;
+	engineSelectorWidth?: number;
 	placeholder: string;
 	sites: Array<NavSite & { categoryId: string; categoryName: string }>;
 	showEngineSelector?: boolean;

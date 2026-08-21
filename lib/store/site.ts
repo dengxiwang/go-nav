@@ -8,6 +8,7 @@ import { atom } from "jotai";
 import type { Key } from "@heroui/react";
 import type { LayoutConfig, NavCategory, NavConfig, NavSite, WebsiteData } from "@/types";
 import { pluginHasRenderablePayload } from "@/lib/plugin-config";
+import { DEFAULT_ENGINE_SELECTOR_WIDTH } from "@/lib/search-config";
 import { resolveSubmissionConfig } from "@/lib/submission";
 import {
 	resolveAdPlacement,
@@ -69,6 +70,7 @@ const EMPTY_NAV: NavConfig = {
 	search: {
 		defaultEngine: "",
 		enableLocalSearch: false,
+		engineSelectorWidth: DEFAULT_ENGINE_SELECTOR_WIDTH,
 		rememberLastEngine: false,
 		placeholder: "",
 		engines: [],
