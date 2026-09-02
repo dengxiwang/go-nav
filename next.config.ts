@@ -23,6 +23,7 @@ const pageExtensions = isHtml
 		: [...basePageExtensions, "server.ts", "server.tsx"];
 
 const nextConfig: NextConfig = {
+	distDir: process.env.NEXT_DIST_DIR || ".next",
 	// export 模式生成纯静态文件；html 模式直接输出到可分发的 web/。
 	...(isExport
 		? {

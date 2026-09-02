@@ -1,34 +1,29 @@
 "use client";
 
 import {
-	Button,
-	Modal,
-	Form,
-	Input,
-	Label,
-	TextField,
-	Description,
-	AlertDialog,
-	Chip,
-	Select,
-	ListBox,
-	toast,
+    Button,
+    Modal,
+    Form,
+    Input,
+    Label,
+    TextField,
+    Description,
+    AlertDialog,
+    Chip,
+    Select,
+    ListBox,
+    toast,
 } from "@heroui/react";
 import { ReactSortable } from "react-sortablejs";
-import {
-	memo,
-	useEffect,
-	useState,
-	useMemo,
-} from "react";
+import { memo, useEffect, useState, useMemo } from "react";
 import type React from "react";
 import {
-	BiPlus,
-	BiEdit,
-	BiTrash,
-	BiChevronUp,
-	BiChevronDown,
-	BiDotsVerticalRounded,
+    BiPlus,
+    BiEdit,
+    BiTrash,
+    BiChevronUp,
+    BiChevronDown,
+    BiDotsVerticalRounded,
 } from "react-icons/bi";
 import type { NavCategory } from "@/types";
 import { useAtom } from "jotai";
@@ -79,8 +74,12 @@ function moveChildCategory(
 	sourceIndex: number,
 	targetIndex: number,
 ) {
-	const sourceParent = categories.find((category) => category.id === sourceParentId);
-	const targetParent = categories.find((category) => category.id === targetParentId);
+	const sourceParent = categories.find(
+		(category) => category.id === sourceParentId,
+	);
+	const targetParent = categories.find(
+		(category) => category.id === targetParentId,
+	);
 	const sourceChildren = sourceParent?.children ?? [];
 	const movingCategory = sourceChildren[sourceIndex];
 	if (!sourceParent || !targetParent || !movingCategory) return categories;
@@ -175,8 +174,7 @@ const CategoryRow = memo(function CategoryRow({
 				data-category-row-card
 				className="grid w-full min-w-0 items-center gap-3 rounded-xl border border-default bg-background px-5 py-2.5 text-sm"
 				style={{
-					gridTemplateColumns:
-						depth > 0 ? childRowGridCols : parentRowGridCols,
+					gridTemplateColumns: depth > 0 ? childRowGridCols : parentRowGridCols,
 				}}
 			>
 				<div className="flex min-w-0 items-center gap-2">
@@ -635,12 +633,12 @@ export function CategoriesEditor() {
 							list={children.map((category) => ({ ...category }))}
 							setList={() => undefined}
 							onEnd={(event) => {
-								const sourceParentId = event.from.closest(
-									"[data-category-id]",
-								)?.getAttribute("data-category-id");
-								const targetParentId = event.to.closest(
-									"[data-category-id]",
-								)?.getAttribute("data-category-id");
+								const sourceParentId = event.from
+									.closest("[data-category-id]")
+									?.getAttribute("data-category-id");
+								const targetParentId = event.to
+									.closest("[data-category-id]")
+									?.getAttribute("data-category-id");
 								const fromIndex = event.oldDraggableIndex;
 								const toIndex = event.newDraggableIndex;
 								if (
@@ -762,7 +760,6 @@ export function CategoriesEditor() {
 					display: flex;
 					align-items: center;
 					justify-content: center;
-					content: "放到这里";
 					color: #60a5fa;
 					font-size: 0.75rem;
 					font-weight: 600;

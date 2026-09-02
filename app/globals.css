@@ -548,3 +548,28 @@ a[data-disabled] {
 	-moz-osx-font-smoothing: grayscale;
 	text-rendering: optimizeLegibility;
 }
+
+/* 后台表格：操作列沿用 go-parse 的右侧固定、滚动阴影和层级处理。 */
+.admin-table-fixed-right-header {
+	position: sticky !important;
+	right: 0;
+	z-index: 20;
+	background-color: var(--surface-secondary) !important;
+}
+
+.admin-table-fixed-right-cell {
+	position: sticky !important;
+	right: 0;
+	z-index: 10;
+	background-color: var(--surface) !important;
+}
+
+:where(.table__row:hover) .admin-table-fixed-right-cell,
+:where(.table__row[data-hovered="true"]) .admin-table-fixed-right-cell {
+	background-color: color-mix(in oklab, var(--surface) 40%, var(--surface-secondary)) !important;
+}
+
+.admin-table-fixed-right-cell > div {
+	position: relative;
+	z-index: 1;
+}

@@ -4,6 +4,9 @@ packages:
 confirmModulesPurge: false
 verifyDepsBeforeRun: false
 
+overrides:
+  '@codemirror/view': 6.43.10
+
 allowBuilds:
   sharp: true
   unrs-resolver: true
