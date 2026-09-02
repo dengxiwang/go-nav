@@ -18,6 +18,7 @@ import {
 } from "@heroui/react";
 import { useAtom } from "jotai";
 import { useRef, useState } from "react";
+import { TableShell } from "@/components/ui/table-shell";
 import {
 	BiChevronDown,
 	BiChevronUp,
@@ -471,7 +472,7 @@ function AdPlacementPanel({
 					</div>
 				</div>
 			) : (
-				<Table variant="secondary" aria-label={`${placementName(placement)}列表`}>
+				<TableShell variant="primary" aria-label={`${placementName(placement)}列表`}>
 					<Table.ScrollContainer>
 						<Table.Content aria-label={`${placementName(placement)}列表`}>
 							<Table.Header>
@@ -480,7 +481,7 @@ function AdPlacementPanel({
 								<Table.Column className="w-48">描述</Table.Column>
 								<Table.Column className="w-52">链接</Table.Column>
 								<Table.Column className="w-20">启用</Table.Column>
-								<Table.Column className="w-44">操作</Table.Column>
+								<Table.Column className="w-44 admin-table-fixed-right-header">操作</Table.Column>
 							</Table.Header>
 							<Table.Body>
 								{entries.map(({ ad }, index) => (
@@ -500,7 +501,7 @@ function AdPlacementPanel({
 							</Table.Body>
 						</Table.Content>
 					</Table.ScrollContainer>
-				</Table>
+				</TableShell>
 			)}
 		</div>
 	);
@@ -648,7 +649,7 @@ function AdRow({
 					ariaLabel="启用"
 				/>
 			</Table.Cell>
-			<Table.Cell>
+			<Table.Cell className="admin-table-fixed-right-cell">
 				<div className="flex items-center gap-1">
 					<Button
 						isIconOnly

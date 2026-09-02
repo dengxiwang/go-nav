@@ -16,6 +16,7 @@ import {
 	useOverlayState,
 } from "@heroui/react";
 import { useAtomValue, useSetAtom } from "jotai";
+import { VirtualizedTable } from "@/components/ui/virtualized-table";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
 	BiFolderOpen,
@@ -65,6 +66,17 @@ interface PreviewSiteRow {
 	uniqueKey: string;
 }
 
+const PREVIEW_TABLE_COLUMN_WIDTHS = {
+	icon: 72,
+	title: 220,
+	url: 340,
+	category: 180,
+} as const;
+
+const PREVIEW_TABLE_MIN_WIDTH = Object.values(
+	PREVIEW_TABLE_COLUMN_WIDTHS,
+).reduce((total, width) => total + width, 0);
+
 export function ExternalImportEditor() {
 	const applyImport = useSetAtom(applyImportAtom);
 	const existingCategories = useAtomValue(categoriesAtom);
@@ -75,7 +87,6 @@ export function ExternalImportEditor() {
 		null,
 	);
 	const [parsing, setParsing] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const [keepExisting, setKeepExisting] = useState(true);
 	const [selectedTopCategory, setSelectedTopCategory] = useState<string | null>(
 		null,
@@ -183,7 +194,6 @@ export function ExternalImportEditor() {
 	const handleSourceChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
 		setSourceHtml(event.target.value);
 		setImportedResult(null);
-		setError(null);
 	};
 
 	const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -199,10 +209,9 @@ export function ExternalImportEditor() {
 				size: file.size,
 			});
 			setImportedResult(null);
-			setError(null);
 			toast.success("书签文件已载入，可以先解析预览");
 		} catch (e) {
-			setError((e as Error).message);
+			toast.danger(`读取书签文件失败：${(e as Error).message}`);
 		} finally {
 			input.value = "";
 		}
@@ -211,14 +220,13 @@ export function ExternalImportEditor() {
 	const handleParse = async () => {
 		if (parsing) return;
 		setParsing(true);
-		setError(null);
 		try {
 			const result = parseBookmarksHtml(sourceHtml);
 			setImportedResult(result);
 			toast.success("书签解析成功，请确认预览后再导入");
 		} catch (e) {
 			setImportedResult(null);
-			setError((e as Error).message);
+			toast.danger(`解析失败：${(e as Error).message}`);
 		} finally {
 			setParsing(false);
 		}
@@ -238,7 +246,6 @@ export function ExternalImportEditor() {
 		setSourceHtml("");
 		setPickedFile(null);
 		setImportedResult(null);
-		setError(null);
 		setSelectedTopCategory(null);
 		setSelectedChildFilter("all");
 		setSearch("");
@@ -381,18 +388,6 @@ export function ExternalImportEditor() {
 						/>
 					</div>
 
-					{error ? (
-						<Alert
-							status="danger"
-							className="border border-red-200/80 bg-red-50/80 dark:border-red-900/40 dark:bg-red-950/20"
-						>
-							<Alert.Indicator />
-							<Alert.Content>
-								<Alert.Title>解析失败</Alert.Title>
-								<Alert.Description>{error}</Alert.Description>
-							</Alert.Content>
-						</Alert>
-					) : null}
 				</div>
 
 				<div className="flex flex-wrap items-center justify-end gap-2 px-5 pb-4">
@@ -601,28 +596,47 @@ export function ExternalImportEditor() {
 										</p>
 									</div>
 								) : (
-									<Table variant="secondary" aria-label="导入网址预览">
-										<Table.ScrollContainer>
-											<Table.Content aria-label="导入网址预览">
-												<Table.Header>
-													<Table.Column className="w-12">图标</Table.Column>
+					<VirtualizedTable
+						aria-label="导入网址预览"
+						minWidth={PREVIEW_TABLE_MIN_WIDTH}
+						rowHeight={56}
+					>
+							<Table.Header className="h-full w-full">
 													<Table.Column
-														className="min-w-28 sm:min-w-44"
+														minWidth={PREVIEW_TABLE_COLUMN_WIDTHS.icon}
+														className="whitespace-nowrap"
+													>
+														图标
+													</Table.Column>
+											<Table.Column
+														minWidth={PREVIEW_TABLE_COLUMN_WIDTHS.title}
+														className="whitespace-nowrap"
 														isRowHeader
 													>
 														名称
 													</Table.Column>
-													<Table.Column className="min-w-52">URL</Table.Column>
-													<Table.Column className="min-w-36">子分类</Table.Column>
+													<Table.Column
+														minWidth={PREVIEW_TABLE_COLUMN_WIDTHS.url}
+														className="whitespace-nowrap"
+													>
+														URL
+													</Table.Column>
+													<Table.Column
+														minWidth={PREVIEW_TABLE_COLUMN_WIDTHS.category}
+														className="whitespace-nowrap"
+													>
+														子分类
+													</Table.Column>
 												</Table.Header>
-												<Table.Body
-													renderEmptyState={() => (
+											<Table.Body
+																		items={filteredSiteRows}
+																		renderEmptyState={() => (
 														<div className="py-12 text-center text-sm text-default-500">
 															暂无数据
 														</div>
 													)}
 												>
-													{filteredSiteRows.map((row) => {
+																	{(row) => {
 														const siteIconSrc = getIconImageSrc(row.site.icon);
 														return (
 															<Table.Row
@@ -630,7 +644,7 @@ export function ExternalImportEditor() {
 																id={row.uniqueKey}
 																textValue={row.site.title}
 															>
-																<Table.Cell>
+											<Table.Cell className="flex items-center">
 																	<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-default/60">
 																		{row.site.icon ? (
 																			siteIconSrc ? (
@@ -652,41 +666,39 @@ export function ExternalImportEditor() {
 																		)}
 																	</div>
 																</Table.Cell>
-																<Table.Cell>
-																	<div className="flex flex-col gap-0.5">
-																		<span className="font-medium">
+											<Table.Cell className="flex min-w-0 items-center">
+													<div className="min-w-0">
+														<span className="block max-w-full truncate text-sm font-medium whitespace-nowrap!">
 																			{row.site.title}
-																		</span>
-																		{row.site.description ? (
-																			<span className="line-clamp-1 text-xs text-default-500">
+																			</span>
+																			{row.site.description ? (
+																				<span className="block truncate text-xs text-default-500">
 																				{row.site.description}
 																			</span>
 																		) : null}
 																	</div>
 																</Table.Cell>
-																<Table.Cell>
+											<Table.Cell className="flex min-w-0 items-center">
 																	<Link
 																		href={row.site.url}
 																		target="_blank"
 																		rel="noopener noreferrer"
-																		className="inline-flex items-center gap-1 truncate text-xs transition no-underline hover:underline"
-																	>
-																		<span className="truncate">{row.site.url}</span>
+																														className="inline-flex max-w-full items-center gap-1 truncate text-xs transition no-underline hover:underline sm:text-sm"
+																													>
+																														<span className="min-w-0 truncate">{row.site.url}</span>
 																		<Link.Icon />
 																	</Link>
 																</Table.Cell>
-																<Table.Cell>
+											<Table.Cell className="flex items-center">
 																	<Chip variant="secondary" className="text-xs!">
 																		{row.childName}
 																	</Chip>
 																</Table.Cell>
 															</Table.Row>
 														);
-													})}
-												</Table.Body>
-											</Table.Content>
-										</Table.ScrollContainer>
-									</Table>
+																	}}
+										</Table.Body>
+					</VirtualizedTable>
 								)}
 							</div>
 						</div>

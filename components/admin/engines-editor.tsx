@@ -15,6 +15,7 @@ import {
 } from "@heroui/react";
 import type { NavConfig, SearchEngine } from "@/types";
 import { useAtom } from "jotai";
+import { TableShell } from "@/components/ui/table-shell";
 import {
 	DEFAULT_ENGINE_SELECTOR_WIDTH,
 	MAX_ENGINE_SELECTOR_WIDTH,
@@ -243,7 +244,7 @@ export function EnginesEditor() {
 								</div>
 							</div>
 						) : (
-							<Table variant="secondary" aria-label="搜索引擎列表">
+							<TableShell variant="primary" aria-label="搜索引擎列表">
 								<Table.ScrollContainer>
 									<Table.Content
 										aria-label="搜索引擎列表"
@@ -265,7 +266,7 @@ export function EnginesEditor() {
 											<Table.Column className="min-w-104 whitespace-nowrap">
 												URL (使用 {"{query}"} 占位)
 											</Table.Column>
-											<Table.Column className="w-40 whitespace-nowrap">
+							<Table.Column className="w-40 whitespace-nowrap admin-table-fixed-right-header">
 												操作
 											</Table.Column>
 										</Table.Header>
@@ -297,7 +298,7 @@ export function EnginesEditor() {
 										</Table.Body>
 									</Table.Content>
 								</Table.ScrollContainer>
-							</Table>
+							</TableShell>
 						)}
 					</div>
 				</Tabs.Panel>
@@ -441,7 +442,7 @@ function EngineRow({
 					onBlur={(e) => commitText("url", e.currentTarget.value)}
 				/>
 			</Table.Cell>
-			<Table.Cell>
+			<Table.Cell className="admin-table-fixed-right-cell">
 				<div className="flex items-center gap-1">
 					<Button
 						isIconOnly

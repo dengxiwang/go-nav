@@ -13,6 +13,7 @@ import {
 	TextField,
 } from "@heroui/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { TableShell } from "@/components/ui/table-shell";
 import { useMemo, useState } from "react";
 import {
 	BiChevronDown,
@@ -400,7 +401,7 @@ export function PluginsEditor() {
 					</div>
 				</div>
 			) : (
-				<Table variant="secondary" aria-label="插件列表">
+				<TableShell variant="primary" aria-label="插件列表">
 					<Table.ScrollContainer>
 						<Table.Content aria-label="插件列表">
 							<Table.Header>
@@ -411,7 +412,7 @@ export function PluginsEditor() {
 								<Table.Column className="w-32">类型</Table.Column>
 								<Table.Column className="min-w-72">描述</Table.Column>
 								<Table.Column className="w-104">内容</Table.Column>
-								<Table.Column className="w-40">操作</Table.Column>
+								<Table.Column className="w-40 admin-table-fixed-right-header">操作</Table.Column>
 							</Table.Header>
 							<Table.Body
 								renderEmptyState={() => (
@@ -441,7 +442,7 @@ export function PluginsEditor() {
 							</Table.Body>
 						</Table.Content>
 					</Table.ScrollContainer>
-				</Table>
+				</TableShell>
 			)}
 
 				<Drawer.Backdrop
@@ -577,7 +578,7 @@ function PluginRow({
 					{getPluginSummary(plugin)}
 				</span>
 			</Table.Cell>
-			<Table.Cell>
+			<Table.Cell className="admin-table-fixed-right-cell">
 				<div className="flex items-center gap-1">
 					<Button
 						isIconOnly

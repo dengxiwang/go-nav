@@ -10,7 +10,6 @@ import {
     Label,
     ListBox,
     Modal,
-    Pagination,
     Select,
     Spinner,
     Table,
@@ -21,6 +20,8 @@ import {
     toast,
 } from "@heroui/react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { TableShell } from "@/components/ui/table-shell";
+import { CrudPagination } from "@/components/ui/crud-pagination";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BiCheck, BiLinkExternal, BiRefresh, BiX } from "react-icons/bi";
 import { SiteIcon } from "@/components/site-icon";
@@ -66,8 +67,6 @@ interface SubmissionApiResponse {
 }
 
 type SubmissionStatusFilter = "all" | SubmissionStatus;
-type PaginationItem = number | "ellipsis-start" | "ellipsis-end";
-
 const SUBMISSIONS_PER_PAGE = 10;
 
 const EMPTY_REVIEW_FORM: ReviewForm = {
@@ -116,28 +115,6 @@ function statusMeta(status: SubmissionStatus) {
 		color: "warning" as const,
 		icon: <Clock width={12} height={12} />,
 	};
-}
-
-function getPaginationItems(
-	page: number,
-	totalPages: number,
-): PaginationItem[] {
-	if (totalPages <= 7) {
-		return Array.from({ length: totalPages }, (_, index) => index + 1);
-	}
-
-	const items: PaginationItem[] = [1];
-	if (page > 3) items.push("ellipsis-start");
-
-	const start = Math.max(2, page - 1);
-	const end = Math.min(totalPages - 1, page + 1);
-	for (let current = start; current <= end; current += 1) {
-		items.push(current);
-	}
-
-	if (page < totalPages - 2) items.push("ellipsis-end");
-	items.push(totalPages);
-	return items;
 }
 
 function formatDate(value: string): string {
@@ -320,14 +297,6 @@ export function SubmissionEditor() {
 		const start = (currentPage - 1) * SUBMISSIONS_PER_PAGE;
 		return filteredSubmissions.slice(start, start + SUBMISSIONS_PER_PAGE);
 	}, [currentPage, filteredSubmissions]);
-	const paginationItems = getPaginationItems(currentPage, totalPages);
-	const firstVisibleItem = filteredSubmissions.length
-		? (currentPage - 1) * SUBMISSIONS_PER_PAGE + 1
-		: 0;
-	const lastVisibleItem = Math.min(
-		currentPage * SUBMISSIONS_PER_PAGE,
-		filteredSubmissions.length,
-	);
 	const isReviewEditable = reviewing?.status === "pending";
 
 	const changeStatusFilter = (keys: Set<Key>) => {
@@ -464,8 +433,8 @@ export function SubmissionEditor() {
 					</Button>
 				</div>
 
-				<Table
-					variant="secondary"
+				<TableShell
+					variant="primary"
 					aria-label="投稿审核列表"
 					className={paginatedSubmissions.length === 0 ? "min-h-70" : undefined}
 				>
@@ -511,7 +480,7 @@ export function SubmissionEditor() {
 								<Table.Column className="w-40 whitespace-nowrap">
 									提交时间
 								</Table.Column>
-								<Table.Column className="w-24 whitespace-nowrap">
+								<Table.Column className="w-24 whitespace-nowrap admin-table-fixed-right-header">
 									操作
 								</Table.Column>
 							</Table.Header>
@@ -586,8 +555,8 @@ export function SubmissionEditor() {
 											<Table.Cell className="whitespace-nowrap text-xs text-default-500">
 												{formatDate(submission.createdAt)}
 											</Table.Cell>
-											<Table.Cell>
-												<Button
+							<Table.Cell className="admin-table-fixed-right-cell">
+								<Button
 													size="sm"
 													variant="outline"
 													onPress={() => openReview(submission)}
@@ -627,55 +596,17 @@ export function SubmissionEditor() {
 								</div>
 							</EmptyState>
 						</Table.Footer>
-					) : (
-						<Table.Footer>
-							<Pagination className="w-full flex-wrap gap-3" size="sm">
-								<Pagination.Summary className="text-xs! text-default-500">
-									显示 {firstVisibleItem}-{lastVisibleItem}，共{" "}
-									{filteredSubmissions.length} 条
-								</Pagination.Summary>
-								<Pagination.Content>
-									<Pagination.Item>
-										<Pagination.Previous
-											isDisabled={currentPage === 1}
-											onPress={() => setPage(Math.max(1, currentPage - 1))}
-										>
-											<Pagination.PreviousIcon />
-											<span>上一页</span>
-										</Pagination.Previous>
-									</Pagination.Item>
-									{paginationItems.map((item) =>
-										typeof item === "number" ? (
-											<Pagination.Item key={item}>
-												<Pagination.Link
-													isActive={item === currentPage}
-													onPress={() => setPage(item)}
-												>
-													{item}
-												</Pagination.Link>
-											</Pagination.Item>
-										) : (
-											<Pagination.Item key={item}>
-												<Pagination.Ellipsis />
-											</Pagination.Item>
-										),
-									)}
-									<Pagination.Item>
-										<Pagination.Next
-											isDisabled={currentPage === totalPages}
-											onPress={() =>
-												setPage(Math.min(totalPages, currentPage + 1))
-											}
-										>
-											<span>下一页</span>
-											<Pagination.NextIcon />
-										</Pagination.Next>
-									</Pagination.Item>
-								</Pagination.Content>
-							</Pagination>
-						</Table.Footer>
-					)}
-				</Table>
+					) : null}
+				</TableShell>
+				{filteredSubmissions.length > 0 ? (
+					<CrudPagination
+						page={currentPage}
+						pageSize={SUBMISSIONS_PER_PAGE}
+						total={filteredSubmissions.length}
+						onPageChange={setPage}
+						isDisabled={loading}
+					/>
+				) : null}
 			</section>
 
 				<Modal.Backdrop

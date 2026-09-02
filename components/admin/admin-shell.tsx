@@ -751,7 +751,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 							website.json 覆盖到网站根目录，不支持任何上传 / 获取等 api 行为。
 						</div>
 					) : null}
-					<Card className="rounded-xl border border-gray-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900">
+					<Card className="rounded-2xl border border-default bg-surface p-3 shadow-none">
 						{children}
 					</Card>
 				</main>

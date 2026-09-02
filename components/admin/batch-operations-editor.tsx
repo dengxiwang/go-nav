@@ -2,31 +2,30 @@
 
 import type { Key } from "@heroui/react";
 import {
-	Button,
-	Checkbox,
-	CheckboxGroup,
-	Chip,
-	InputGroup,
-	Label,
-	ListBox,
-	ProgressBar,
-	Select,
+    Button,
+    Checkbox,
+    CheckboxGroup,
+    Chip,
+    InputGroup,
+    Label,
+    ListBox,
+    ProgressBar,
+    Select,
 	Spinner,
 	Table,
-	TableLayout,
 	TextField,
 	toast,
-	Virtualizer,
 } from "@heroui/react";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { VirtualizedTable } from "@/components/ui/virtualized-table";
 import {
-	BiGlobe,
-	BiPause,
-	BiPlay,
-	BiRefresh,
-	BiSearch,
-	BiTrash,
+    BiGlobe,
+    BiPause,
+    BiPlay,
+    BiRefresh,
+    BiSearch,
+    BiTrash,
 } from "react-icons/bi";
 import { categoriesAtom } from "@/lib/store/admin";
 import type { NavCategory, NavSite } from "@/types";
@@ -104,7 +103,7 @@ const TABLE_COLUMN_WIDTHS = {
 	previewImage: 112,
 	url: 240,
 	category: 160,
-	fields: 180,
+	fields: 240,
 	status: 100,
 	actions: 76,
 } as const;
@@ -916,7 +915,7 @@ export function BatchOperationsEditor() {
 						onChange={setSelectedFields}
 						isDisabled={isRunning}
 						isInvalid={selectedUpdateFields.length === 0}
-						className="min-w-0 gap-2 pl-1"
+						className="flex min-w-0 flex-row flex-wrap items-center gap-x-4 gap-y-2 pl-1"
 					>
 						<div className="flex flex-wrap items-center gap-2">
 							<Label className="text-sm font-medium">更新信息</Label>
@@ -1023,24 +1022,12 @@ export function BatchOperationsEditor() {
 					</div>
 				</div>
 
-				<Virtualizer
-					layout={TableLayout}
-					layoutOptions={{
-						headingHeight: 36,
-						rowHeight: 42,
-					}}
+				<VirtualizedTable
+					aria-label="待更新网址列表"
+					minWidth={TABLE_MIN_WIDTH}
+					rowHeight={42}
 				>
-					<Table
-						aria-label="待更新网址列表"
-						className="overflow-hidden rounded-xl border border-default"
-					>
-						<Table.ScrollContainer>
-							<Table.Content
-								aria-label="待更新网址列表"
-								className="h-full min-h-96 max-h-[calc(100dvh-324px)] w-full overflow-y-scroll"
-								style={{ minWidth: TABLE_MIN_WIDTH }}
-							>
-								<Table.Header className="h-full w-full">
+					<Table.Header className="h-full w-full">
 									<Table.Column id="icon" width={TABLE_COLUMN_WIDTHS.icon}>
 										图标
 									</Table.Column>
@@ -1088,7 +1075,7 @@ export function BatchOperationsEditor() {
 										操作
 									</Table.Column>
 								</Table.Header>
-								<Table.Body
+					<Table.Body
 									items={filteredRows}
 									renderEmptyState={() => (
 										<div className="py-12 text-center text-sm text-default-500">
@@ -1186,8 +1173,8 @@ export function BatchOperationsEditor() {
 												<Table.Cell className={"flex items-center"}>
 													<RowStatusChip status={rowStatus} error={rowError} />
 												</Table.Cell>
-												<Table.Cell className={"flex items-center"}>
-													<Button
+									<Table.Cell className={"flex items-center"}>
+																	<Button
 														isIconOnly
 														size="sm"
 														variant="outline"
@@ -1202,11 +1189,8 @@ export function BatchOperationsEditor() {
 											</Table.Row>
 										);
 									}}
-								</Table.Body>
-							</Table.Content>
-						</Table.ScrollContainer>
-					</Table>
-				</Virtualizer>
+					</Table.Body>
+				</VirtualizedTable>
 			</section>
 		</div>
 	);
@@ -1220,11 +1204,11 @@ function UpdateFieldCheckbox({
 	label: string;
 }) {
 	return (
-		<Checkbox value={value} className="items-center gap-2 mt-0">
-			<Checkbox.Control>
-				<Checkbox.Indicator />
-			</Checkbox.Control>
+		<Checkbox value={value} className="mt-0 flex-row! items-center gap-2">
 			<Checkbox.Content>
+				<Checkbox.Control>
+					<Checkbox.Indicator />
+				</Checkbox.Control>
 				<Label className="text-sm">{label}</Label>
 			</Checkbox.Content>
 		</Checkbox>

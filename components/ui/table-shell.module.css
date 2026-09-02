@@ -1,0 +1,79 @@
+.table {
+  position: relative;
+}
+
+.table:global(.site-table-region) {
+  container-type: inline-size;
+}
+
+.table :global(.table__scroll-container) {
+  overflow-x: scroll;
+  scrollbar-width: none;
+}
+
+.table :global(.table__scroll-container)::-webkit-scrollbar {
+  display: none;
+}
+
+.table[data-fixed-right-shadow="true"] :global(.admin-table-fixed-right-header)::before,
+.table[data-fixed-right-shadow="true"] :global(.admin-table-fixed-right-cell)::before {
+  position: absolute;
+  inset-block: 0;
+  right: 100%;
+  width: 1.75rem;
+  pointer-events: none;
+  content: "";
+  box-shadow: inset -10px 0 8px -8px color-mix(in oklab, var(--foreground) 16%, transparent);
+}
+
+.table :global(.admin-table-fixed-right-header) {
+  border-start-end-radius: min(2rem, var(--radius-2xl)) !important;
+}
+
+.table :global(.table__row:last-child .admin-table-fixed-right-cell) {
+  border-end-end-radius: min(2rem, var(--radius-2xl)) !important;
+}
+
+.table:global(.site-table-region) :global(.site-drop-action-cell) {
+  z-index: 0 !important;
+  background-color: transparent !important;
+}
+
+.table:global(.site-table-region) :global(.site-drop-placeholder) {
+  left: 0 !important;
+  z-index: 60 !important;
+  right: auto !important;
+  width: max(0px, calc(100cqw - 6rem)) !important;
+  visibility: visible !important;
+}
+
+.table :global(.table__row:first-child .admin-table-fixed-right-cell)::after,
+.table :global(.table__row:last-child .admin-table-fixed-right-cell)::after {
+  --fixed-corner-radius: min(2rem, var(--radius-2xl));
+
+  position: absolute;
+  right: 0;
+  z-index: 1;
+  width: var(--fixed-corner-radius);
+  height: var(--fixed-corner-radius);
+  pointer-events: none;
+  content: "";
+}
+
+.table :global(.table__row:first-child .admin-table-fixed-right-cell)::after {
+  top: 0;
+  background: radial-gradient(
+    circle var(--fixed-corner-radius) at bottom left,
+    transparent calc(var(--fixed-corner-radius) - 0.5px),
+    var(--surface-secondary) var(--fixed-corner-radius)
+  );
+}
+
+.table :global(.table__row:last-child .admin-table-fixed-right-cell)::after {
+  bottom: 0;
+  background: radial-gradient(
+    circle var(--fixed-corner-radius) at top left,
+    transparent calc(var(--fixed-corner-radius) - 0.5px),
+    var(--surface-secondary) var(--fixed-corner-radius)
+  );
+}

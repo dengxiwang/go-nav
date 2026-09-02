@@ -73,8 +73,8 @@ import { isHtmlDeployment } from "@/lib/client/html-admin";
 import { getPreferredSiteHref } from "@/lib/client/site-link";
 import { getIconImageSrc } from "@/lib/icon";
 import {
-	MAX_SITE_DETAIL_PREVIEW_IMAGES,
-	normalizeSitePreviewImages,
+    MAX_SITE_DETAIL_PREVIEW_IMAGES,
+    normalizeSitePreviewImages,
 } from "@/lib/site-detail";
 import { SiteDetailMarkdown } from "@/components/app-layout/site-detail-markdown";
 import { IconPicker } from "./icon-picker";
@@ -205,10 +205,7 @@ function getClientPoint(event: Event) {
 	return null;
 }
 
-function isPointInsideRect(
-	point: { x: number; y: number },
-	rect: DOMRect,
-) {
+function isPointInsideRect(point: { x: number; y: number }, rect: DOMRect) {
 	return (
 		point.x >= rect.left &&
 		point.x <= rect.right &&
@@ -244,21 +241,27 @@ function SortableSiteRow({
 	registerRowElement: (id: string, el: HTMLElement | null) => void;
 	isPointerOverSiteTable: boolean;
 }) {
-	const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-		useSortable({
-			id,
-			data: {
-				type: "site",
-				sourceCategoryId,
-				sourceIndex: realIndex,
-				site,
-			} satisfies SiteDragData,
-			animateLayoutChanges: ({ isSorting }) => isSorting,
-			transition: {
-				duration: 160,
-				easing: "cubic-bezier(0.2, 0, 0, 1)",
-			},
-		});
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({
+		id,
+		data: {
+			type: "site",
+			sourceCategoryId,
+			sourceIndex: realIndex,
+			site,
+		} satisfies SiteDragData,
+		animateLayoutChanges: ({ isSorting }) => isSorting,
+		transition: {
+			duration: 160,
+			easing: "cubic-bezier(0.2, 0, 0, 1)",
+		},
+	});
 
 	const style: React.CSSProperties = {
 		transform: CSS.Transform.toString(transform),
@@ -288,9 +291,7 @@ function SortableSiteRow({
 		>
 			<Table.Cell>
 				{showSortPlaceholder ? (
-					<span className="visible! pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#3b82f6] bg-[rgba(37,99,235,0.18)] text-xs font-semibold text-[#60a5fa]">
-						放到这里
-					</span>
+					<span className="visible! pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#3b82f6] bg-[rgba(37,99,235,0.18)] text-xs font-semibold text-[#60a5fa]"></span>
 				) : null}
 				<div
 					className="flex h-8 w-8 items-center justify-center rounded-lg"
@@ -521,9 +522,7 @@ function DroppableCategoryButton({
 				)}
 			>
 				{showHighlight ? (
-					<span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#3b82f6] bg-[rgba(37,99,235,0.18)] text-xs font-semibold text-[#60a5fa]">
-						放到这里
-					</span>
+					<span className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-[#3b82f6] bg-[rgba(37,99,235,0.18)] text-xs font-semibold text-[#60a5fa]"></span>
 				) : null}
 				<span className="inline-flex w-5 shrink-0 items-center justify-center">
 					{cat.hasChildren ? (
@@ -820,9 +819,9 @@ function DetailPreviewImagesPicker({
 									aria-label="删除详情预览图"
 									className="text-danger"
 									onPress={() =>
-									onChange(
-										images.filter((_, itemIndex) => itemIndex !== index),
-									)
+										onChange(
+											images.filter((_, itemIndex) => itemIndex !== index),
+										)
 									}
 								>
 									<BiTrash className="size-4" />
@@ -868,9 +867,7 @@ function DetailPreviewImagesPicker({
 						</Button>
 						<span className="text-xs text-default-500">
 							{images.length}/{MAX_SITE_DETAIL_PREVIEW_IMAGES} 张，
-							{isHtmlDeployment
-								? "HTML 模式请使用图片 URL"
-								: "推荐 2～4 张"}
+							{isHtmlDeployment ? "HTML 模式请使用图片 URL" : "推荐 2～4 张"}
 						</span>
 					</div>
 					<Button
@@ -955,7 +952,9 @@ export function SitesEditor() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingSite, setEditingSite] = useState<NavSite | null>(null);
 	const [editingIndex, setEditingIndex] = useState<number>(-1);
-	const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+	const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
+		null,
+	);
 	const [editingSourceCategoryId, setEditingSourceCategoryId] = useState<
 		string | null
 	>(null);
@@ -1124,7 +1123,11 @@ export function SitesEditor() {
 				return { ...c, sites: updater(c.sites ?? []) };
 			}
 			if (c.children) {
-				const nextChildren = updateCategorySites(c.children, categoryId, updater);
+				const nextChildren = updateCategorySites(
+					c.children,
+					categoryId,
+					updater,
+				);
 				if (nextChildren !== c.children) {
 					didUpdate = true;
 					return { ...c, children: nextChildren };
@@ -1323,9 +1326,7 @@ export function SitesEditor() {
 			return;
 		}
 		const siteToSave: NavSite = { ...editingSite };
-		const previewImages = normalizeSitePreviewImages(
-			siteToSave.previewImages,
-		);
+		const previewImages = normalizeSitePreviewImages(siteToSave.previewImages);
 		if (previewImages.length > 0) {
 			siteToSave.previewImages = previewImages;
 		} else {
@@ -1337,7 +1338,10 @@ export function SitesEditor() {
 		if (editingIndex >= 0) {
 			const sourceCategoryId = editingSourceCategoryId ?? selectedCategory;
 			if (!sourceCategoryId) return;
-			const sourceCategory = findCategoryById(value.categories, sourceCategoryId);
+			const sourceCategory = findCategoryById(
+				value.categories,
+				sourceCategoryId,
+			);
 			if (!sourceCategory?.sites?.[editingIndex]) {
 				toast.warning("原网址不存在，无法保存修改");
 				return;
@@ -1742,301 +1746,291 @@ export function SitesEditor() {
 					</div>
 				</div>
 
-					<Drawer.Backdrop
-						isOpen={mobileDrawerState.isOpen}
-						onOpenChange={mobileDrawerState.setOpen}
-					>
-						<Drawer.Content placement="left">
-							<Drawer.Dialog className="w-dvw max-w-72 p-3 bg-white dark:bg-neutral-900">
-								<Drawer.Header>
-									<Drawer.Heading className="flex items-center justify-between p-3">
-										<span>选择分类</span>
-										<Button
-											isIconOnly
-											size="sm"
-											variant="tertiary"
-											onPress={mobileDrawerState.close}
-										>
-											<BiX className="size-4" />
-										</Button>
-									</Drawer.Heading>
-								</Drawer.Header>
-								<Drawer.Body className="overflow-y-auto">
-									{renderCategoryList("drawer")}
-								</Drawer.Body>
-							</Drawer.Dialog>
-						</Drawer.Content>
-					</Drawer.Backdrop>
+				<Drawer.Backdrop
+					isOpen={mobileDrawerState.isOpen}
+					onOpenChange={mobileDrawerState.setOpen}
+				>
+					<Drawer.Content placement="left">
+						<Drawer.Dialog className="w-dvw max-w-72 p-3 bg-white dark:bg-neutral-900">
+							<Drawer.Header>
+								<Drawer.Heading className="flex items-center justify-between p-3">
+									<span>选择分类</span>
+									<Button
+										isIconOnly
+										size="sm"
+										variant="tertiary"
+										onPress={mobileDrawerState.close}
+									>
+										<BiX className="size-4" />
+									</Button>
+								</Drawer.Heading>
+							</Drawer.Header>
+							<Drawer.Body className="overflow-y-auto">
+								{renderCategoryList("drawer")}
+							</Drawer.Body>
+						</Drawer.Dialog>
+					</Drawer.Content>
+				</Drawer.Backdrop>
 
-					<Modal.Backdrop
-						isOpen={isModalOpen}
-						onOpenChange={(open) => !open && closeSiteModal()}
-					>
-						<Modal.Container size="lg">
-							<Modal.Dialog>
-								<Modal.CloseTrigger />
-								<Modal.Header>
-									<Modal.Heading>
-										{editingIndex >= 0 ? "编辑网址" : "新增网址"}
-									</Modal.Heading>
-								</Modal.Header>
-								<Modal.Body>
-									<div className="flex flex-col gap-4">
-										<Select
-											className="w-full"
-											placeholder="选择分类"
-											value={editingCategoryId}
-											onChange={(value) =>
-												setEditingCategoryId(value ? String(value) : null)
-											}
-											isDisabled={selectableCategories.length === 0}
-										>
-											<Label>分类</Label>
-											<Select.Trigger>
-												<Select.Value />
-												<Select.Indicator />
-											</Select.Trigger>
-											<Select.Popover>
-												<ListBox>
-													{selectableCategories.map((category) => (
-														<ListBox.Item
-															key={category.id}
-															id={category.id}
-															textValue={getCategoryPath(category.id)}
-														>
-															<span className="truncate">
-																{getCategoryPath(category.id)}
-															</span>
-															<ListBox.ItemIndicator />
-														</ListBox.Item>
-													))}
-												</ListBox>
-											</Select.Popover>
-										</Select>
-										<TextField
-											value={editingSite?.url ?? ""}
-											onChange={(v) =>
-												setEditingSite({ ...editingSite!, url: v })
-											}
-										>
-											<Label>网站地址</Label>
-											<InputGroup>
-												<InputGroup.Input
-													placeholder="https://..."
-													style={{
-														maxWidth: `calc(100% - 161px)`,
-													}}
-												/>
-												<InputGroup.Suffix className="p-1!">
-													<div className="flex gap-1">
-														<Button
-															size="sm"
-															variant="tertiary"
-															className={"rounded-lg h-7 px-2 gap-1 text-xs!"}
-															isPending={fetchingInfo}
-															isDisabled={capturingPreview}
-															onPress={fetchWebsiteInfo}
-														>
-															{({ isPending }) => (
-																<>
-																	{isPending ? (
-																		<Spinner color="current" size="sm" />
-																	) : (
-																		<BiGlobe className="size-4" />
-																	)}
-																	{isPending ? "获取中" : "网站信息"}
-																</>
-															)}
-														</Button>
-														<Button
-															size="sm"
-															variant="tertiary"
-															className={"rounded-lg h-7 px-2 gap-1 text-xs!"}
-															isPending={capturingPreview}
-															isDisabled={fetchingInfo}
-															onPress={captureWebsitePreview}
-														>
-															{({ isPending }) => (
-																<>
-																	{isPending ? (
-																		<Spinner color="current" size="sm" />
-																	) : (
-																		<BiImage className="size-4" />
-																	)}
-																	{isPending ? "获取中" : "预览图"}
-																</>
-															)}
-														</Button>
-													</div>
-												</InputGroup.Suffix>
-											</InputGroup>
-										</TextField>
-										<TextField
-											value={editingSite?.intranetUrl ?? ""}
-											onChange={(v) =>
-												setEditingSite({ ...editingSite!, intranetUrl: v })
-											}
-										>
-											<Label>内网地址（可选）</Label>
-											<Input
-												placeholder="http://192.168.x.x:xxxx"
+				<Modal.Backdrop
+					isOpen={isModalOpen}
+					onOpenChange={(open) => !open && closeSiteModal()}
+				>
+					<Modal.Container size="lg">
+						<Modal.Dialog>
+							<Modal.CloseTrigger />
+							<Modal.Header>
+								<Modal.Heading>
+									{editingIndex >= 0 ? "编辑网址" : "新增网址"}
+								</Modal.Heading>
+							</Modal.Header>
+							<Modal.Body>
+								<div className="flex flex-col gap-4">
+									<Select
+										className="w-full"
+										placeholder="选择分类"
+										value={editingCategoryId}
+										onChange={(value) =>
+											setEditingCategoryId(value ? String(value) : null)
+										}
+										isDisabled={selectableCategories.length === 0}
+									>
+										<Label>分类</Label>
+										<Select.Trigger>
+											<Select.Value />
+											<Select.Indicator />
+										</Select.Trigger>
+										<Select.Popover>
+											<ListBox>
+												{selectableCategories.map((category) => (
+													<ListBox.Item
+														key={category.id}
+														id={category.id}
+														textValue={getCategoryPath(category.id)}
+													>
+														<span className="truncate">
+															{getCategoryPath(category.id)}
+														</span>
+														<ListBox.ItemIndicator />
+													</ListBox.Item>
+												))}
+											</ListBox>
+										</Select.Popover>
+									</Select>
+									<TextField
+										value={editingSite?.url ?? ""}
+										onChange={(v) =>
+											setEditingSite({ ...editingSite!, url: v })
+										}
+									>
+										<Label>网站地址</Label>
+										<InputGroup>
+											<InputGroup.Input
+												placeholder="https://..."
+												style={{
+													maxWidth: `calc(100% - 161px)`,
+												}}
 											/>
-										</TextField>
-										<p className="text-xs text-default-500 -mt-2">
-											“网站信息”更新名称、描述、标签和图标；“预览图”只抓取网站首屏截图。
-										</p>
-										<TextField
-											value={editingSite?.title ?? ""}
+											<InputGroup.Suffix className="p-1!">
+												<div className="flex gap-1">
+													<Button
+														size="sm"
+														variant="tertiary"
+														className={"rounded-lg h-7 px-2 gap-1 text-xs!"}
+														isPending={fetchingInfo}
+														isDisabled={capturingPreview}
+														onPress={fetchWebsiteInfo}
+													>
+														{({ isPending }) => (
+															<>
+																{isPending ? (
+																	<Spinner color="current" size="sm" />
+																) : (
+																	<BiGlobe className="size-4" />
+																)}
+																{isPending ? "获取中" : "网站信息"}
+															</>
+														)}
+													</Button>
+													<Button
+														size="sm"
+														variant="tertiary"
+														className={"rounded-lg h-7 px-2 gap-1 text-xs!"}
+														isPending={capturingPreview}
+														isDisabled={fetchingInfo}
+														onPress={captureWebsitePreview}
+													>
+														{({ isPending }) => (
+															<>
+																{isPending ? (
+																	<Spinner color="current" size="sm" />
+																) : (
+																	<BiImage className="size-4" />
+																)}
+																{isPending ? "获取中" : "预览图"}
+															</>
+														)}
+													</Button>
+												</div>
+											</InputGroup.Suffix>
+										</InputGroup>
+									</TextField>
+									<TextField
+										value={editingSite?.intranetUrl ?? ""}
+										onChange={(v) =>
+											setEditingSite({ ...editingSite!, intranetUrl: v })
+										}
+									>
+										<Label>内网地址（可选）</Label>
+										<Input placeholder="http://192.168.x.x:xxxx" />
+									</TextField>
+									<p className="text-xs text-default-500 -mt-2">
+										“网站信息”更新名称、描述、标签和图标；“预览图”只抓取网站首屏截图。
+									</p>
+									<TextField
+										value={editingSite?.title ?? ""}
+										onChange={(v) =>
+											setEditingSite({ ...editingSite!, title: v })
+										}
+									>
+										<Label>网站名称</Label>
+										<Input placeholder="例如：GitHub" />
+									</TextField>
+									<TextField
+										value={editingSite?.description ?? ""}
+										onChange={(v) =>
+											setEditingSite({ ...editingSite!, description: v })
+										}
+									>
+										<Label>卡片摘要</Label>
+										<Input placeholder="用于首页卡片、本地搜索和详情页摘要" />
+									</TextField>
+									<TextField
+										value={(editingSite?.tags ?? []).join(", ")}
+										onChange={(v) =>
+											setEditingSite({
+												...editingSite!,
+												tags: v
+													.split(/[,，]/)
+													.map((s) => s.trim())
+													.filter(Boolean),
+											})
+										}
+									>
+										<Label>标签（逗号分隔）</Label>
+										<Input placeholder="工具, 开发, 代码" />
+									</TextField>
+									<div className="flex flex-col gap-1">
+										<Label>图标</Label>
+										<IconPicker
+											value={editingSite?.icon ?? ""}
 											onChange={(v) =>
-												setEditingSite({ ...editingSite!, title: v })
+												setEditingSite({ ...editingSite!, icon: v })
 											}
-										>
-											<Label>网站名称</Label>
-											<Input placeholder="例如：GitHub" />
-										</TextField>
-										<TextField
-											value={editingSite?.description ?? ""}
-											onChange={(v) =>
-												setEditingSite({ ...editingSite!, description: v })
+											bgColor={editingSite?.bgColor}
+											onBgColorChange={(v) =>
+												setEditingSite({ ...editingSite!, bgColor: v })
 											}
-										>
-											<Label>卡片摘要</Label>
-											<Input
-												placeholder="用于首页卡片、本地搜索和详情页摘要"
-											/>
-										</TextField>
-										<TextField
-											value={(editingSite?.tags ?? []).join(", ")}
+											iconPadding={editingSite?.iconPadding}
+											defaultIconPadding={defaultIconPadding}
+											onIconPaddingChange={(v) =>
+												setEditingSite({ ...editingSite!, iconPadding: v })
+											}
+										/>
+									</div>
+									<div className="flex flex-col gap-1">
+										<Label>卡片预览图</Label>
+										<PreviewImagePicker
+											value={editingSite?.previewImage ?? ""}
 											onChange={(v) =>
 												setEditingSite({
 													...editingSite!,
-													tags: v
-														.split(/[,，]/)
-														.map((s) => s.trim())
-														.filter(Boolean),
+													previewImage: v,
 												})
 											}
-										>
-											<Label>标签（逗号分隔）</Label>
-											<Input
-												placeholder="工具, 开发, 代码"
-											/>
-										</TextField>
-										<div className="flex flex-col gap-1">
-											<Label>图标</Label>
-											<IconPicker
-												value={editingSite?.icon ?? ""}
-												onChange={(v) =>
-													setEditingSite({ ...editingSite!, icon: v })
-												}
-												bgColor={editingSite?.bgColor}
-												onBgColorChange={(v) =>
-													setEditingSite({ ...editingSite!, bgColor: v })
-												}
-												iconPadding={editingSite?.iconPadding}
-												defaultIconPadding={defaultIconPadding}
-												onIconPaddingChange={(v) =>
-													setEditingSite({ ...editingSite!, iconPadding: v })
-												}
-											/>
-										</div>
-										<div className="flex flex-col gap-1">
-											<Label>卡片预览图</Label>
-											<PreviewImagePicker
-												value={editingSite?.previewImage ?? ""}
-												onChange={(v) =>
-													setEditingSite({
-														...editingSite!,
-														previewImage: v,
-													})
-												}
-											/>
-											<p className="text-xs text-default-500">
-												只用于首页“预览图卡片”样式；不会自动加入详情图组。
+										/>
+										<p className="text-xs text-default-500">
+											只用于首页“预览图卡片”样式；不会自动加入详情图组。
+										</p>
+									</div>
+									<div className="border-t border-default pt-4">
+										<div className="mb-3">
+											<h3 className="text-sm font-semibold">详情预览图</h3>
+											<p className="mt-1 text-xs text-default-500">
+												仅在网址详情页展示；未配置时自动回退到卡片预览图。
 											</p>
 										</div>
-										<div className="border-t border-default pt-4">
-											<div className="mb-3">
-												<h3 className="text-sm font-semibold">详情预览图</h3>
-												<p className="mt-1 text-xs text-default-500">
-													仅在网址详情页展示；未配置时自动回退到卡片预览图。
-												</p>
-											</div>
-											<DetailPreviewImagesPicker
-												value={editingSite?.previewImages}
-												onChange={(previewImages) =>
-													setEditingSite({ ...editingSite!, previewImages })
-												}
-											/>
-										</div>
-										<div className="border-t border-default pt-4">
-											<div className="mb-2">
-												<h3 className="text-sm font-semibold">详情正文</h3>
-												<p className="mt-1 text-xs text-default-500">
-													支持 Markdown、GFM 表格和普通换行；原始 HTML 不会执行。
-												</p>
-											</div>
-											<DetailMarkdownEditor
-												value={editingSite?.detailMarkdown ?? ""}
-												onChange={(detailMarkdown) =>
-													setEditingSite({ ...editingSite!, detailMarkdown })
-												}
-											/>
-										</div>
-									</div>
-								</Modal.Body>
-								<Modal.Footer>
-									<Button
-										variant="tertiary"
-										onPress={closeSiteModal}
-									>
-										取消
-									</Button>
-									<Button variant="primary" onPress={saveSite}>
-										{editingIndex >= 0 ? "保存" : "新增"}
-									</Button>
-								</Modal.Footer>
-							</Modal.Dialog>
-						</Modal.Container>
-					</Modal.Backdrop>
-
-					<AlertDialog.Backdrop
-						isOpen={deleteTarget !== null}
-						onOpenChange={(open) => !open && setDeleteTarget(null)}
-					>
-						<AlertDialog.Container>
-							<AlertDialog.Dialog className="sm:max-w-100">
-								<AlertDialog.CloseTrigger />
-								<AlertDialog.Header>
-									<AlertDialog.Icon status="danger" />
-									<AlertDialog.Heading>确认删除网址</AlertDialog.Heading>
-								</AlertDialog.Header>
-								<AlertDialog.Body>
-									<p>
-										删除{" "}
-										<strong>{currentSites[deleteTarget ?? 0]?.title}</strong>{" "}
-										后，该网址数据将被永久删除，此操作不可撤销。
-									</p>
-								</AlertDialog.Body>
-								<AlertDialog.Footer>
-									<Button slot="close" variant="tertiary">
-										取消
-									</Button>
-									<Button
-										slot="close"
-										variant="danger"
-										onPress={() => {
-											if (deleteTarget !== null) {
-												deleteSite(deleteTarget);
+										<DetailPreviewImagesPicker
+											value={editingSite?.previewImages}
+											onChange={(previewImages) =>
+												setEditingSite({ ...editingSite!, previewImages })
 											}
-										}}
-									>
-										确认删除
-									</Button>
-								</AlertDialog.Footer>
-							</AlertDialog.Dialog>
-						</AlertDialog.Container>
-					</AlertDialog.Backdrop>
+										/>
+									</div>
+									<div className="border-t border-default pt-4">
+										<div className="mb-2">
+											<h3 className="text-sm font-semibold">详情正文</h3>
+											<p className="mt-1 text-xs text-default-500">
+												支持 Markdown、GFM 表格和普通换行；原始 HTML 不会执行。
+											</p>
+										</div>
+										<DetailMarkdownEditor
+											value={editingSite?.detailMarkdown ?? ""}
+											onChange={(detailMarkdown) =>
+												setEditingSite({ ...editingSite!, detailMarkdown })
+											}
+										/>
+									</div>
+								</div>
+							</Modal.Body>
+							<Modal.Footer>
+								<Button variant="tertiary" onPress={closeSiteModal}>
+									取消
+								</Button>
+								<Button variant="primary" onPress={saveSite}>
+									{editingIndex >= 0 ? "保存" : "新增"}
+								</Button>
+							</Modal.Footer>
+						</Modal.Dialog>
+					</Modal.Container>
+				</Modal.Backdrop>
+
+				<AlertDialog.Backdrop
+					isOpen={deleteTarget !== null}
+					onOpenChange={(open) => !open && setDeleteTarget(null)}
+				>
+					<AlertDialog.Container>
+						<AlertDialog.Dialog className="sm:max-w-100">
+							<AlertDialog.CloseTrigger />
+							<AlertDialog.Header>
+								<AlertDialog.Icon status="danger" />
+								<AlertDialog.Heading>确认删除网址</AlertDialog.Heading>
+							</AlertDialog.Header>
+							<AlertDialog.Body>
+								<p>
+									删除 <strong>{currentSites[deleteTarget ?? 0]?.title}</strong>{" "}
+									后，该网址数据将被永久删除，此操作不可撤销。
+								</p>
+							</AlertDialog.Body>
+							<AlertDialog.Footer>
+								<Button slot="close" variant="tertiary">
+									取消
+								</Button>
+								<Button
+									slot="close"
+									variant="danger"
+									onPress={() => {
+										if (deleteTarget !== null) {
+											deleteSite(deleteTarget);
+										}
+									}}
+								>
+									确认删除
+								</Button>
+							</AlertDialog.Footer>
+						</AlertDialog.Dialog>
+					</AlertDialog.Container>
+				</AlertDialog.Backdrop>
 			</div>
 			{createPortal(
 				<DragOverlay dropAnimation={null}>
