@@ -1,4 +1,5 @@
 "use client";
+import dynamic from "next/dynamic";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { HeaderBundle } from "./header-bundle";
@@ -30,10 +31,13 @@ import {
     submissionConfigAtom,
 } from "@/lib/store/site";
 import { AppLayoutHomeContent } from "./app-layout/app-layout-home-content";
-import { SiteDetailPage } from "./app-layout/site-detail-page";
 import { useAppLayoutView } from "./app-layout/use-app-layout-view";
 import { useHomeRouteState } from "./app-layout/use-home-route-state";
 import { PageEmptyState } from "./ui/empty-state-blocks";
+
+const SiteDetailPage = dynamic(() =>
+	import("./app-layout/site-detail-page").then((module) => module.SiteDetailPage),
+);
 
 /**
  * 顶层布局组件（Jotai 订阅版）。

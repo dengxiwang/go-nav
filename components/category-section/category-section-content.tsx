@@ -1,6 +1,5 @@
 "use client";
 
-import { memo } from "react";
 import type { NavCategory } from "@/types";
 import type { CategorySectionModel } from "../layout.types";
 import { IconView } from "../icon-view";
@@ -27,30 +26,7 @@ export function CategoryContent({
 	return <EmptyHint />;
 }
 
-const ActiveTabPanel = memo(
-	function ActiveTabPanel({
-		tab,
-		view,
-	}: {
-		tab: NavCategory;
-		view: CategorySectionModel;
-	}) {
-		return <SubcategoryContent category={tab} view={view} />;
-	},
-	(prev, next) => prev.tab === next.tab && prev.view === next.view,
-);
-
-export function TabPanelContent({
-	tab,
-	view,
-}: {
-	tab: NavCategory;
-	view: CategorySectionModel;
-}) {
-	return <ActiveTabPanel tab={tab} view={view} />;
-}
-
-function SubcategoryContent({
+export function SubcategoryContent({
 	category,
 	view,
 }: {

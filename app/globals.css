@@ -92,6 +92,30 @@ svg:not([height]) {
 	padding: 0rem;
 }
 
+/* 菜单自动聚焦/恢复焦点时，原生 :focus-visible 可能误判鼠标操作。
+   HeroUI 控件以 React Aria 的焦点状态为准；仅清除额外外圈，保留阴影和表单错误提示。 */
+:where(
+	.button,
+	.close-button,
+	.toggle-button,
+	.link,
+	.pagination__link,
+	.color-picker__trigger,
+	.tabs__tab,
+	.list-box-item,
+	.menu-item,
+	.dropdown__trigger,
+	.select:not([data-invalid="true"]):not([aria-invalid="true"]) .select__trigger
+)[data-rac]:focus-visible:not([data-focus-visible="true"]) {
+	--tw-ring-shadow: 0 0 #0000;
+	--tw-ring-offset-shadow: 0 0 #0000;
+}
+
+/* 表格焦点框由单元格内阴影绘制，单独限制焦点颜色，保留固定列的边缘阴影。 */
+:where(.table__column, .table__cell, .table__row)[data-rac]:focus-visible:not([data-focus-visible="true"]) {
+	--focus: transparent;
+}
+
 .ad-carousel__swiper {
 	overflow: hidden;
 	padding: 1px;
@@ -549,6 +573,17 @@ a[data-disabled] {
 	text-rendering: optimizeLegibility;
 }
 
+/* 全站 Tabs 只平移选中指示条，宽高直接适配目标标签，避免拉伸和弹跳。 */
+.tabs__indicator {
+	transition: translate 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tabs__indicator {
+		transition: none;
+	}
+}
+
 /* 后台表格：操作列沿用 go-parse 的右侧固定、滚动阴影和层级处理。 */
 .admin-table-fixed-right-header {
 	position: sticky !important;
@@ -564,9 +599,12 @@ a[data-disabled] {
 	background-color: var(--surface) !important;
 }
 
-:where(.table__row:hover) .admin-table-fixed-right-cell,
-:where(.table__row[data-hovered="true"]) .admin-table-fixed-right-cell {
-	background-color: color-mix(in oklab, var(--surface) 40%, var(--surface-secondary)) !important;
+/* 与 HeroUI 普通单元格保持一致，避免触屏点击后固定列残留 hover 背景。 */
+@media (hover: hover) {
+	:where(.table__row:hover) .admin-table-fixed-right-cell,
+	:where(.table__row[data-hovered="true"]) .admin-table-fixed-right-cell {
+		background-color: color-mix(in oklab, var(--surface) 40%, var(--surface-secondary)) !important;
+	}
 }
 
 .admin-table-fixed-right-cell > div {

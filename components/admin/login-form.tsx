@@ -9,6 +9,7 @@ import {
 	TextField,
 	toast,
 } from "@heroui/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BiShow, BiHide } from "react-icons/bi";
 import { getIconImageSrc } from "@/lib/icon";
@@ -24,6 +25,7 @@ export function LoginForm({
 	websiteLogo,
 	showBrand,
 }: LoginFormProps) {
+	const router = useRouter();
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -43,7 +45,9 @@ export function LoginForm({
 				const data = (await res.json().catch(() => ({}))) as { error?: string };
 				throw new Error(data.error || `登录失败 (${res.status})`);
 			}
-			window.location.href = "/admin";
+			router.push("/admin");
+			// 登录接口更新 cookie 后，刷新目标路由的服务端鉴权和配置。
+			router.refresh();
 		} catch (err) {
 			toast.danger("登录失败", {
 				description: (err as Error).message,
