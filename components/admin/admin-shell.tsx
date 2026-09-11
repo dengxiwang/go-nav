@@ -1,6 +1,7 @@
 "use client";
 
 import {
+    AlertDialog,
     Button,
     ListBox,
     Separator,
@@ -505,6 +506,9 @@ function ImportEventBridge() {
 export function AdminShell({ children }: { children?: React.ReactNode }) {
 	const router = useRouter();
 	const pathname = usePathname();
+	const dirty = useAtomValue(dirtyAtom);
+	const [pendingLeave, setPendingLeave] = useState<"home" | "logout" | null>(null);
+	const [isLeaving, setIsLeaving] = useState(false);
 	const currentKey = routeKeyFromPath(pathname);
 	const currentItem =
 		ALL_ITEMS.find((i) => i.key === currentKey) ?? ALL_ITEMS[0];
@@ -538,10 +542,34 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 		return () => window.removeEventListener("resize", onResize);
 	}, [mobileDrawerState]);
 
-	const onLogout = useCallback(async () => {
-		await fetch("/api/auth/logout/", { method: "POST" });
-		window.location.href = "/admin/login";
-	}, []);
+	useEffect(() => {
+		if (!dirty) setPendingLeave(null);
+	}, [dirty]);
+
+	const leaveAdmin = useCallback(async (destination: "home" | "logout") => {
+		setIsLeaving(true);
+		try {
+			if (destination === "logout") {
+				const res = await fetch("/api/auth/logout/", { method: "POST" });
+				if (!res.ok) throw new Error(`退出失败 (${res.status})`);
+			}
+			setPendingLeave(null);
+			router.push(destination === "logout" ? "/admin/login" : "/");
+			// 在导航后刷新目标路由，重新读取登录态及已保存配置。
+			router.refresh();
+		} catch (err) {
+			setIsLeaving(false);
+			toast.danger("退出失败", { description: (err as Error).message });
+		}
+	}, [router]);
+
+	const requestLeave = (destination: "home" | "logout") => {
+		if (dirty) {
+			setPendingLeave(destination);
+		} else {
+			void leaveAdmin(destination);
+		}
+	};
 
 	const handleSelection = (keys: Selection) => {
 		if (keys === "all") return;
@@ -699,9 +727,8 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 							variant="outline"
 							isIconOnly
 							className="h-8 w-8 shrink-0 sm:hidden"
-							onPress={() => {
-								window.location.href = "/";
-							}}
+							isDisabled={isLeaving}
+							onPress={() => requestLeave("home")}
 						>
 							<BiShow className="size-4" />
 						</Button>
@@ -709,9 +736,8 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 						<Button
 							variant="outline"
 							className="h-8 shrink-0 hidden sm:flex"
-							onPress={() => {
-								window.location.href = "/";
-							}}
+							isDisabled={isLeaving}
+							onPress={() => requestLeave("home")}
 						>
 							<BiShow className="size-4" />
 							<span>前台</span>
@@ -724,7 +750,8 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 									variant="tertiary"
 									isIconOnly
 									className="h-8 w-8 shrink-0 sm:hidden"
-									onPress={onLogout}
+									isDisabled={isLeaving}
+									onPress={() => requestLeave("logout")}
 								>
 									<BiLogOut className="size-4" />
 								</Button>
@@ -732,7 +759,8 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 								<Button
 									variant="tertiary"
 									className="h-8 shrink-0 hidden sm:flex"
-									onPress={onLogout}
+									isDisabled={isLeaving}
+									onPress={() => requestLeave("logout")}
 								>
 									<BiLogOut className="size-4" />
 									<span>退出</span>
@@ -756,6 +784,39 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 					</Card>
 				</main>
 			</div>
+			<AlertDialog.Backdrop
+				isOpen={pendingLeave !== null}
+				isKeyboardDismissDisabled={isLeaving}
+				onOpenChange={(open) => !open && !isLeaving && setPendingLeave(null)}
+			>
+				<AlertDialog.Container placement="center" size="sm">
+					<AlertDialog.Dialog>
+						<AlertDialog.Header>
+							<AlertDialog.Icon status="warning" />
+							<AlertDialog.Heading>放弃未保存的修改？</AlertDialog.Heading>
+						</AlertDialog.Header>
+						<AlertDialog.Body>
+							当前修改尚未{isHtmlDeployment ? "导出" : "保存"}，离开后将丢失。
+						</AlertDialog.Body>
+						<AlertDialog.Footer>
+							<Button
+								variant="tertiary"
+								isDisabled={isLeaving}
+								onPress={() => setPendingLeave(null)}
+							>
+								继续编辑
+							</Button>
+							<Button
+								variant="danger"
+								isPending={isLeaving}
+								onPress={() => pendingLeave && leaveAdmin(pendingLeave)}
+							>
+								{pendingLeave === "logout" ? "放弃并退出" : "放弃并离开"}
+							</Button>
+						</AlertDialog.Footer>
+					</AlertDialog.Dialog>
+				</AlertDialog.Container>
+			</AlertDialog.Backdrop>
 		</div>
 	);
 }

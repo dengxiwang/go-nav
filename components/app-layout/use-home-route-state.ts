@@ -52,8 +52,9 @@ export function useHomeRouteState({
 	const isDetailRoute = detailSlug !== null;
 	const isHomeRoute = pathname === "/" && !isDetailRoute;
 	const detailEntries = useMemo(
-		() => collectSiteDetailEntries(categories),
-		[categories],
+		() =>
+			detailEnabled && detailSlug ? collectSiteDetailEntries(categories) : [],
+		[categories, detailEnabled, detailSlug],
 	);
 	const selectedEntry = useMemo<SiteDetailEntry | null>(() => {
 		if (!detailEnabled || !detailSlug) return null;

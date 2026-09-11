@@ -15,3 +15,6 @@ minimumReleaseAgeExclude:
   - '@uiw/codemirror-extensions-basic-setup@4.25.10'
   - '@uiw/react-codemirror@4.25.10'
   - '@codemirror/view@6.43.8'
+  - '@heroui/react@3.2.5'
+  - '@heroui/styles@3.2.5'
+  - pinyin-pro@3.29.4
