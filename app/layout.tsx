@@ -3,6 +3,7 @@ import "./globals.css";
 import { getNav } from "@/lib/config";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppToastProvider } from "@/components/app-toast-provider";
+import { FocusRingGuard } from "@/components/focus-ring-guard";
 
 const isHtmlDeployment =
 	(process.env.BUILD_MODE || "server").toLowerCase() === "html";
@@ -87,11 +88,12 @@ export default function RootLayout({
 				/>
 			</head>
 			<body className="min-h-full flex flex-col">
-				<ThemeProvider mode={themeMode}>
-					{children}
-					<AppToastProvider />
-				</ThemeProvider>
-			</body>
+								<ThemeProvider mode={themeMode}>
+										<FocusRingGuard />
+										{children}
+										<AppToastProvider />
+								</ThemeProvider>
+						</body>
 		</html>
 	);
 }

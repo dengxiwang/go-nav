@@ -116,6 +116,18 @@ svg:not([height]) {
 	--focus: transparent;
 }
 
+/* 全局焦点环守卫（与 components/focus-ring-guard.tsx 配套）：
+   鼠标点击、非导航键（字母/空格/回车/Esc 等）按下、弹窗开合与焦点还原等场景
+   抑制焦点环，仅 Tab / 方向键等键盘导航时恢复。
+   输入框、文本域与可编辑区域保留自身焦点样式。 */
+html[data-focus-ring="off"]
+	:is(:focus-visible, [data-focus-visible="true"]):not(input):not(textarea):not([contenteditable="true"]) {
+	--tw-ring-shadow: 0 0 #0000;
+	--tw-ring-offset-shadow: 0 0 #0000;
+	outline: none;
+	outline-offset: 0;
+}
+
 .ad-carousel__swiper {
 	overflow: hidden;
 	padding: 1px;

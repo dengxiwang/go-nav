@@ -57,7 +57,12 @@ function isLocalHostname(hostname: string): boolean {
 export function normalizeHttpUrl(raw: string): URL {
 	const trimmed = raw.trim();
 	const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-	const parsed = new URL(candidate);
+	let parsed: URL;
+	try {
+		parsed = new URL(candidate);
+	} catch {
+		throw new Error("网址格式不正确，请输入完整网址");
+	}
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
 		throw new Error("仅支持 http / https 地址");
 	}
@@ -106,7 +111,11 @@ export async function fetchPublicResource(
 		if (![301, 302, 303, 307, 308].includes(res.status)) return res;
 		const location = res.headers.get("location");
 		if (!location) return res;
-		current = new URL(location, current);
+		try {
+			current = new URL(location, current);
+		} catch {
+			throw new Error("跳转地址格式不正确");
+		}
 	}
 	throw new Error("重定向次数过多");
 }
