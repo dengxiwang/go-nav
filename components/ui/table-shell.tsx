@@ -116,6 +116,11 @@ export function TableShell({ children, variant, "aria-label": ariaLabel, classNa
   const onPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
+    if (event.buttons === 0) {
+      // 拖拽未正常收尾（窗口外松开、指针捕获丢失）时清理残留状态，悬停移动不再跟随。
+      dragStateRef.current = null;
+      return;
+    }
     const track = event.currentTarget.parentElement;
     if (!track) return;
     const thumbWidth = event.currentTarget.getBoundingClientRect().width;
@@ -124,6 +129,9 @@ export function TableShell({ children, variant, "aria-label": ariaLabel, classNa
   };
   const stopDragging = (event: PointerEvent<HTMLSpanElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    dragStateRef.current = null;
+  };
+  const onLostPointerCapture = () => {
     dragStateRef.current = null;
   };
 
@@ -162,6 +170,7 @@ export function TableShell({ children, variant, "aria-label": ariaLabel, classNa
             onPointerMove={onPointerMove}
             onPointerUp={stopDragging}
             onPointerCancel={stopDragging}
+            onLostPointerCapture={onLostPointerCapture}
           />
         </div>
       ) : null}

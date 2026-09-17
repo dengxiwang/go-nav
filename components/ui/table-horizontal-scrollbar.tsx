@@ -53,6 +53,11 @@ export function TableHorizontalScrollbar({ rootRef, "aria-label": ariaLabel }: P
 		const drag = dragRef.current;
 		const track = event.currentTarget.parentElement;
 		if (!drag || !track || drag.pointerId !== event.pointerId) return;
+		if (event.buttons === 0) {
+			// 拖拽未正常收尾（窗口外松开、指针捕获丢失）时清理残留状态，悬停移动不再跟随。
+			dragRef.current = null;
+			return;
+		}
 		const thumb = event.currentTarget.getBoundingClientRect().width;
 		const available = Math.max(1, track.getBoundingClientRect().width - thumb);
 		const container = rootRef.current?.querySelector<HTMLElement>(".table__scroll-container");
@@ -60,6 +65,9 @@ export function TableHorizontalScrollbar({ rootRef, "aria-label": ariaLabel }: P
 	};
 	const stop = (event: PointerEvent<HTMLSpanElement>) => {
 		if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+		dragRef.current = null;
+	};
+	const onLostPointerCapture = () => {
 		dragRef.current = null;
 	};
 
@@ -84,6 +92,7 @@ export function TableHorizontalScrollbar({ rootRef, "aria-label": ariaLabel }: P
 				onPointerMove={onPointerMove}
 				onPointerUp={stop}
 				onPointerCancel={stop}
+				onLostPointerCapture={onLostPointerCapture}
 			/>
 		</div>
 	);

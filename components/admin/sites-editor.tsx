@@ -1848,7 +1848,7 @@ export function SitesEditor() {
 																) : (
 																	<BiGlobe className="size-4" />
 																)}
-																{isPending ? "获取中" : "网站信息"}
+																网站信息
 															</>
 														)}
 													</Button>
@@ -1867,7 +1867,7 @@ export function SitesEditor() {
 																) : (
 																	<BiImage className="size-4" />
 																)}
-																{isPending ? "获取中" : "预览图"}
+																预览图
 															</>
 														)}
 													</Button>
