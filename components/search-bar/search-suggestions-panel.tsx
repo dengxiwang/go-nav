@@ -2,6 +2,7 @@
 
 import type { Key } from "@heroui/react";
 import { ListBox } from "@heroui/react";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 import { SearchPanelShell } from "./search-panel-shell";
 import { DROPDOWN_MAX_HEIGHT } from "./search-bar.utils";
 import type { SuggestionItem } from "./search-bar.types";
@@ -16,12 +17,15 @@ export function SearchSuggestionsPanel({
 	onAction: (id: Key) => void;
 	suggestions: SuggestionItem[];
 }) {
+	const scrollRef = useScrollContainment<HTMLDivElement>();
+
 	return (
 		<SearchPanelShell>
 			<ListBox
+				ref={scrollRef}
 				aria-label="搜索建议"
 				onAction={onAction}
-				className="overflow-y-auto p-1.5 overscroll-none"
+				className="overflow-y-auto p-1.5"
 				style={{ maxHeight: DROPDOWN_MAX_HEIGHT }}
 			>
 				{suggestions.map((suggestion, index) => (

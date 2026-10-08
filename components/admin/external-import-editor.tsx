@@ -19,6 +19,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { VirtualizedTable } from "@/components/ui/virtualized-table";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
+	BiDownload,
 	BiFolderOpen,
 	BiImport,
 	BiMenu,
@@ -33,6 +34,8 @@ import {
 	summarizeWebsiteData,
 	type BookmarkImportResult,
 } from "@/lib/bookmark-import";
+import { downloadBookmarksHtml } from "@/lib/bookmark-export";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 import { AdminSwitch } from "./admin-switch";
 import { getIconImageSrc } from "@/lib/icon";
 import { applyImportAtom, categoriesAtom } from "@/lib/store/admin";
@@ -78,6 +81,7 @@ const PREVIEW_TABLE_MIN_WIDTH = Object.values(
 ).reduce((total, width) => total + width, 0);
 
 export function ExternalImportEditor() {
+	const categoryScrollRef = useScrollContainment<HTMLDivElement>();
 	const applyImport = useSetAtom(applyImportAtom);
 	const existingCategories = useAtomValue(categoriesAtom);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +198,15 @@ export function ExternalImportEditor() {
 	const handleSourceChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
 		setSourceHtml(event.target.value);
 		setImportedResult(null);
+	};
+
+	const handleExport = () => {
+		try {
+			downloadBookmarksHtml(existingWebsiteData);
+			toast.success("已开始下载 HTML 书签文件");
+		} catch (error) {
+			toast.danger(`导出失败：${(error as Error).message}`);
+		}
 	};
 
 	const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -319,6 +332,27 @@ export function ExternalImportEditor() {
 
 	return (
 		<div className="flex flex-col gap-4">
+			<section className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 dark:border-neutral-800 dark:bg-neutral-900 sm:flex-row sm:items-center sm:justify-between">
+				<div className="min-w-0">
+					<h3 className="text-sm font-semibold">导出 HTML 书签</h3>
+					<p className="mt-1 text-xs leading-5 text-default-500">
+						将当前 {existingSummary.topCategoryCount} 个顶级分类、{existingSummary.siteCount} 个网址导出为书签文件，保留分类层级、排列顺序、网址名称和简介，可导入浏览器及支持 HTML 书签的管理软件。
+					</p>
+					<p className="mt-1 text-xs leading-5 text-default-500">
+						包含当前尚未保存的修改；每个网址使用主地址，简介是否显示取决于导入软件。
+					</p>
+				</div>
+				<Button
+					variant="primary"
+					className="shrink-0"
+					isDisabled={existingCategories.length === 0}
+					onPress={handleExport}
+				>
+					<BiDownload data-icon="inline-start" />
+					导出 HTML 书签
+				</Button>
+			</section>
+
 			<Alert
 				status="accent"
 				className="border border-blue-200/70 bg-linear-to-r from-blue-50 via-sky-50 to-cyan-50 dark:border-blue-900/40 dark:from-blue-950/30 dark:via-slate-950 dark:to-cyan-950/20"
@@ -341,7 +375,7 @@ export function ExternalImportEditor() {
 				</div>
 
 				<div className="flex flex-col gap-4 px-5 py-4">
-					<div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default-200 bg-default-50/70 p-3 dark:bg-neutral-950/20">
+					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="flex flex-wrap items-center gap-3">
 							<Button
 								variant="outline"
@@ -368,7 +402,7 @@ export function ExternalImportEditor() {
 						</div>
 
 						{sourceHtml ? (
-							<Button variant="ghost" size="sm" onPress={handleReset}>
+							<Button variant="danger-soft" size="sm" onPress={handleReset}>
 								<BiTrash data-icon="inline-start" />
 								清空
 							</Button>
@@ -489,7 +523,7 @@ export function ExternalImportEditor() {
 							左侧只展示本次导入解析出的顶级分类
 						</p>
 					</div>
-					<div className="flex-1 overflow-y-auto p-2 overscroll-none">
+					<div ref={categoryScrollRef} className="flex-1 overflow-y-auto p-2">
 						{renderCategoryList()}
 					</div>
 				</div>

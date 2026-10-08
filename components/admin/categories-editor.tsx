@@ -29,6 +29,7 @@ import type { NavCategory } from "@/types";
 import { useAtom } from "jotai";
 import { categoriesAtom } from "@/lib/store/admin";
 import { getIconImageSrc } from "@/lib/icon";
+import { HorizontalScrollArea } from "@/components/ui/horizontal-scroll";
 import { IconPicker } from "./icon-picker";
 import Loading from "./loading";
 
@@ -788,7 +789,7 @@ export function CategoriesEditor() {
 				}
 			`}</style>
 
-			<div className="overflow-x-auto rounded-xl border border-default bg-default/10">
+			<HorizontalScrollArea label="分类列表" className="rounded-xl border border-default bg-default/10">
 				<div className="min-w-280">
 					<div
 						className="grid min-w-280 items-center gap-4 border-b border-default px-5 py-3 text-xs font-medium text-default-500"
@@ -842,7 +843,7 @@ export function CategoriesEditor() {
 						)}
 					</ReactSortable>
 				</div>
-			</div>
+			</HorizontalScrollArea>
 
 			<Modal.Backdrop
 				isOpen={isModalOpen}

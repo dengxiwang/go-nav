@@ -110,11 +110,6 @@ export function useSearchInteractions({
 			event.stopImmediatePropagation();
 			onActivateSearchIndex();
 			inputRef.current?.focus();
-			requestAnimationFrame(() => {
-				if (document.activeElement !== inputRef.current) {
-					inputRef.current?.focus();
-				}
-			});
 		};
 
 		window.addEventListener("keydown", onKey, true);
@@ -129,15 +124,6 @@ export function useSearchInteractions({
 
 	const handleInputKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
 		if (event.nativeEvent.isComposing) return;
-
-		if (event.key === "Escape") {
-			event.preventDefault();
-			event.stopPropagation();
-			setIsOpen(false);
-			setActiveIndex(-1);
-			event.currentTarget.blur();
-			return;
-		}
 
 		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 		if (!query.trim() || keyboardItemCount === 0) return;
@@ -161,6 +147,7 @@ export function useSearchInteractions({
 		if (event.nativeEvent.isComposing) return;
 		if (event.key !== "Escape") return;
 
+		event.preventDefault();
 		event.stopPropagation();
 		(
 			event.nativeEvent as KeyboardEvent & {
@@ -169,9 +156,7 @@ export function useSearchInteractions({
 		).stopImmediatePropagation?.();
 		setIsOpen(false);
 		setActiveIndex(-1);
-		requestAnimationFrame(() => {
-			inputRef.current?.blur();
-		});
+		event.currentTarget.blur();
 	};
 
 	return {

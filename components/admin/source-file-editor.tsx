@@ -40,6 +40,7 @@ import {
 } from "yaml";
 import { configRevisionAtom, syncDataWithoutDirtyAtom } from "@/lib/store/admin";
 import Loading from "./loading";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 
 const EDITOR_HEIGHT = "calc(100dvh - 242px)";
 const EDITOR_LINE_HEIGHT = "1.75rem";
@@ -77,7 +78,10 @@ export function SourceFileEditor() {
 	const syncData = useSetAtom(syncDataWithoutDirtyAtom);
 	const setConfigRevision = useSetAtom(configRevisionAtom);
 	const editorViewRef = useRef<EditorView | null>(null);
+	const editorScrollRef = useScrollContainment<HTMLElement>();
+	const editorScrollCleanupRef = useRef<(() => void) | undefined>(undefined);
 	const searchInputRef = useRef<HTMLInputElement>(null);
+	useEffect(() => () => editorScrollCleanupRef.current?.(), []);
 
 	const syncThemeMode = useCallback(() => {
 		const nextIsDark = document.documentElement.classList.contains("dark");
@@ -608,6 +612,8 @@ export function SourceFileEditor() {
 					indentWithTab
 					extensions={editorExtensions}
 					onCreateEditor={(view) => {
+						editorScrollCleanupRef.current?.();
+						editorScrollCleanupRef.current = editorScrollRef(view.scrollDOM);
 						editorViewRef.current = view;
 						setCursor({ line: 1, column: 1 });
 						setIssueCount(diagnosticCount(view.state));

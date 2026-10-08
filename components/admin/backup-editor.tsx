@@ -1,5 +1,7 @@
 "use client";
 
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
+
 import { Button, Modal, toast } from "@heroui/react";
 import { useRef, useState } from "react";
 import { BiCheck, BiDownload, BiTrash, BiUpload } from "react-icons/bi";
@@ -40,6 +42,7 @@ function createBackupUploadId(): string {
 }
 
 export function BackupEditor() {
+	const orphanListScrollRef = useScrollContainment<HTMLDivElement>();
 	const [importing, setImporting] = useState(false);
 	const [importProgress, setImportProgress] = useState<number | null>(null);
 	const [exporting, setExporting] = useState(false);
@@ -358,7 +361,7 @@ export function BackupEditor() {
 												没有发现可清理的无用素材。
 											</p>
 										) : (
-											<div className="max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs dark:border-neutral-800 dark:bg-neutral-950">
+											<div ref={orphanListScrollRef} className="max-h-64 overflow-auto rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs dark:border-neutral-800 dark:bg-neutral-950">
 												<ul className="flex flex-col gap-1 font-mono text-gray-700 dark:text-neutral-300">
 													{preview.orphans.map((name) => (
 														<li key={name} className="truncate">

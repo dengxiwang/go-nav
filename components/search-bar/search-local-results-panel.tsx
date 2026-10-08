@@ -2,6 +2,7 @@
 
 import type { Key } from "@heroui/react";
 import { EmptyState, ListBox } from "@heroui/react";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 import type { LayoutConfig } from "@/types";
 import { SiteIcon } from "../site-icon";
 import { SearchPanelShell } from "./search-panel-shell";
@@ -20,12 +21,15 @@ export function SearchLocalResultsPanel({
 	onAction: (id: Key) => void;
 	results: SearchBarSite[];
 }) {
+	const scrollRef = useScrollContainment<HTMLDivElement>();
+
 	return (
 		<SearchPanelShell>
 			<ListBox
+				ref={scrollRef}
 				aria-label="搜索结果"
 				onAction={onAction}
-				className="overflow-y-auto p-1.5 overscroll-none"
+				className="overflow-y-auto p-1.5"
 				style={{ maxHeight: DROPDOWN_MAX_HEIGHT }}
 				renderEmptyState={() => <EmptyState>未找到匹配的网站</EmptyState>}
 			>

@@ -6,11 +6,12 @@ import {
 	InputGroup,
 	Label,
 	Link,
+	Spinner,
 	TextField,
 	toast,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import { BiShow, BiHide } from "react-icons/bi";
 import { getIconImageSrc } from "@/lib/icon";
 
@@ -28,13 +29,20 @@ export function LoginForm({
 	const router = useRouter();
 	const [username, setUsername] = useState("");
 	const [password, setPassword] = useState("");
-	const [loading, setLoading] = useState(false);
+	const [status, setStatus] = useState<"idle" | "submitting" | "navigating">(
+		"idle",
+	);
+	const [isNavigating, startNavigation] = useTransition();
+	const submittingRef = useRef(false);
 	const [showPwd, setShowPwd] = useState(false);
 	const logoSrc = getIconImageSrc(websiteLogo);
+	const loading = status !== "idle" || isNavigating;
 
 	const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		setLoading(true);
+		if (submittingRef.current) return;
+		submittingRef.current = true;
+		setStatus("submitting");
 		try {
 			const res = await fetch("/api/auth/login/", {
 				method: "POST",
@@ -45,15 +53,19 @@ export function LoginForm({
 				const data = (await res.json().catch(() => ({}))) as { error?: string };
 				throw new Error(data.error || `登录失败 (${res.status})`);
 			}
-			router.push("/admin");
-			// 登录接口更新 cookie 后，刷新目标路由的服务端鉴权和配置。
-			router.refresh();
+			// 成功提示持续到后台挂载，覆盖鉴权、路由响应和页面代码加载。
+			setStatus("navigating");
+			startNavigation(() => {
+				router.replace("/admin/categories/");
+				// 登录接口更新 cookie 后，重新读取服务端鉴权和配置。
+				router.refresh();
+			});
 		} catch (err) {
+			submittingRef.current = false;
+			setStatus("idle");
 			toast.danger("登录失败", {
 				description: (err as Error).message,
 			});
-		} finally {
-			setLoading(false);
 		}
 	};
 
@@ -84,57 +96,78 @@ export function LoginForm({
 				</p>
 			</div>
 
-			<form onSubmit={onSubmit} className="flex flex-col gap-5">
-				<TextField
-					value={username}
-					onChange={setUsername}
-					isRequired
-					name="username"
+			<div className="relative">
+				<form
+					onSubmit={onSubmit}
+					className={`flex flex-col gap-5${status === "navigating" ? " invisible" : ""}`}
+					inert={status === "navigating"}
+					aria-busy={loading}
 				>
-					<Label>用户名</Label>
-					<Input placeholder="admin" autoComplete="username" />
-				</TextField>
+					<TextField
+						value={username}
+						onChange={setUsername}
+						isRequired
+						isDisabled={loading}
+						name="username"
+					>
+						<Label>用户名</Label>
+						<Input placeholder="admin" autoComplete="username" />
+					</TextField>
 
-				<TextField
-					value={password}
-					onChange={setPassword}
-					isRequired
-					name="password"
-				>
-					<Label>密码</Label>
-					<InputGroup>
-						<InputGroup.Input
-							type={showPwd ? "text" : "password"}
-							placeholder="••••••••"
-							autoComplete="current-password"
-						/>
-						<InputGroup.Suffix className="pr-0">
-							<Button
-								isIconOnly
-								aria-label={showPwd ? "隐藏密码" : "显示密码"}
-								size="sm"
-								variant="ghost"
-								onPress={() => setShowPwd(!showPwd)}
-							>
-								{showPwd ? (
-									<BiShow className="size-4" />
-								) : (
-									<BiHide className="size-4" />
-								)}
-							</Button>
-						</InputGroup.Suffix>
-					</InputGroup>
-				</TextField>
+					<TextField
+						value={password}
+						onChange={setPassword}
+						isRequired
+						isDisabled={loading}
+						name="password"
+					>
+						<Label>密码</Label>
+						<InputGroup>
+							<InputGroup.Input
+								type={showPwd ? "text" : "password"}
+								placeholder="••••••••"
+								autoComplete="current-password"
+							/>
+							<InputGroup.Suffix className="pr-0">
+								<Button
+									isIconOnly
+									aria-label={showPwd ? "隐藏密码" : "显示密码"}
+									size="sm"
+									variant="ghost"
+									isDisabled={loading}
+									onPress={() => setShowPwd(!showPwd)}
+								>
+									{showPwd ? (
+										<BiShow className="size-4" />
+									) : (
+										<BiHide className="size-4" />
+									)}
+								</Button>
+							</InputGroup.Suffix>
+						</InputGroup>
+					</TextField>
 
-				<Button
-					type="submit"
-					variant="primary"
-					isDisabled={loading}
-					className="mt-1 w-full"
-				>
-					{loading ? "登录中..." : "登录"}
-				</Button>
-			</form>
+					<Button
+						type="submit"
+						variant="primary"
+						isDisabled={loading}
+						isPending={loading}
+						className="mt-1 w-full"
+					>
+						{loading ? <Spinner color="current" size="sm" /> : null}
+						{loading ? "登录中..." : "登录"}
+					</Button>
+				</form>
+				{status === "navigating" ? (
+					<div
+						role="status"
+						className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+					>
+						<Spinner size="md" color="accent" />
+						<p className="text-sm text-default-500">登录成功，正在进入后台…</p>
+					</div>
+				) : null}
+			</div>
 
 			<p className="text-center text-xs mt-6 font-medium">
 				基于开源项目：

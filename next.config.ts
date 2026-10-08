@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
 				...(isHtml ? { distDir: "web" } : {}),
 			}
 		: { output: "standalone" as const }),
+	// 动态后台入口在渲染外壳前跳转，避免先输出 dashboard 再流式重定向。
+	...(!isExport
+		? {
+				redirects: async () => [
+					{
+						source: "/admin/",
+						destination: "/admin/categories/",
+						permanent: false,
+					},
+				],
+			}
+		: {}),
 	env: {
 		NEXT_PUBLIC_DEPLOYMENT_MODE: isHtml
 			? "html"

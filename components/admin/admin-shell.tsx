@@ -15,7 +15,7 @@ import {
     Link,
     useOverlayState,
 } from "@heroui/react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
@@ -60,6 +60,8 @@ import {
 import { getIconImageSrc } from "@/lib/icon";
 import type { NavConfig, WebsiteData } from "@/types";
 import { AdminScrollTopButton } from "./scroll-top-button";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
+import { AdminContent, AdminNavigationProvider, useAdminNavigation } from "./navigation";
 
 type RouteKey =
 	| "categories"
@@ -118,9 +120,9 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
 			},
 			{
 				key: "import",
-				label: "从书签导入",
+				label: "书签导入 / 导出",
 				icon: <BiImport className="size-5" />,
-				desc: "导入浏览器书签并自动解析分类",
+				desc: "导入浏览器书签，或导出 HTML 书签文件",
 			},
 			{
 				key: "source-file",
@@ -504,12 +506,21 @@ function ImportEventBridge() {
 }
 
 export function AdminShell({ children }: { children?: React.ReactNode }) {
+	return (
+		<AdminNavigationProvider>
+			<AdminShellContent>{children}</AdminShellContent>
+		</AdminNavigationProvider>
+	);
+}
+
+function AdminShellContent({ children }: { children?: React.ReactNode }) {
+	const menuScrollRef = useScrollContainment<HTMLDivElement>();
 	const router = useRouter();
-	const pathname = usePathname();
+	const { activePath, navigate } = useAdminNavigation();
 	const dirty = useAtomValue(dirtyAtom);
 	const [pendingLeave, setPendingLeave] = useState<"home" | "logout" | null>(null);
 	const [isLeaving, setIsLeaving] = useState(false);
-	const currentKey = routeKeyFromPath(pathname);
+	const currentKey = routeKeyFromPath(activePath);
 	const currentItem =
 		ALL_ITEMS.find((i) => i.key === currentKey) ?? ALL_ITEMS[0];
 	const visibleNavSections = useMemo(
@@ -575,7 +586,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 		if (keys === "all") return;
 		const k = Array.from(keys)[0];
 		if (!k) return;
-		router.push(`/admin/${String(k)}`);
+		navigate(`/admin/${String(k)}/`);
 	};
 
 	return (
@@ -590,7 +601,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 				<BrandBlock variant="desktop" />
 
 				{/* 菜单区域 */}
-				<div className="flex-1 overflow-y-auto p-2 overscroll-none">
+				<div ref={menuScrollRef} className="flex-1 overflow-y-auto p-2">
 					<ListBox
 						aria-label="管理菜单"
 						selectionMode="single"
@@ -702,7 +713,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 					{/* 桌面端 Breadcrumbs */}
 					<div className="hidden lg:block">
 						<Breadcrumbs>
-							<Breadcrumbs.Item href="/admin">管理后台</Breadcrumbs.Item>
+							<Breadcrumbs.Item href="/admin/categories/">管理后台</Breadcrumbs.Item>
 							<Breadcrumbs.Item>{currentItem.label}</Breadcrumbs.Item>
 						</Breadcrumbs>
 					</div>
@@ -780,7 +791,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 						</div>
 					) : null}
 					<Card className="rounded-2xl border border-default bg-surface p-3 shadow-none">
-						{children}
+						<AdminContent>{children}</AdminContent>
 					</Card>
 				</main>
 			</div>

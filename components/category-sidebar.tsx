@@ -21,6 +21,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
 import type { NavCategory } from "@/types";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 import {
 	activeIdAtom,
 	showCategorySearchAtom,
@@ -251,6 +252,7 @@ export const CategorySidebar = memo(function CategorySidebar({
 	);
 
 	const listRef = useRef<HTMLDivElement>(null);
+	const listScrollRef = useScrollContainment(listRef);
 
 	useEffect(() => {
 		if (!listRef.current) return;
@@ -332,7 +334,7 @@ export const CategorySidebar = memo(function CategorySidebar({
 					</SearchField>
 				</div>
 			)}
-			<div ref={listRef} className="flex-1 overflow-y-auto">
+			<div ref={listScrollRef} className="flex-1 overflow-y-auto">
 				{filteredCategories.length === 0 ? (
 					<div className="flex items-center justify-center p-8">
 						<EmptyState className="text-center">
