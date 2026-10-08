@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 /**
- * /admin 默认跳转到分类管理。
+ * 正常请求由 next.config.ts 在渲染前跳转；这里保留路由级兜底。
  */
 export default function AdminIndexPage() {
-	redirect("/admin/categories");
+	redirect("/admin/categories/");
 }

@@ -18,3 +18,5 @@ minimumReleaseAgeExclude:
   - '@heroui/react@3.2.5'
   - '@heroui/styles@3.2.5'
   - pinyin-pro@3.29.4
+  - '@codemirror/language@6.13.1'
+  - '@codemirror/streamparser@6.0.0'

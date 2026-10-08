@@ -1,15 +1,14 @@
-import { Spinner } from "@heroui/react";
+"use client";
+
+import { useContext, useLayoutEffect } from "react";
+import { AdminNavigationContext } from "./navigation";
+import { AdminLoadingIndicator } from "./loading-indicator";
 
 export default function Loading() {
-	return (
-		<div
-			className="flex flex-col items-center justify-center gap-2"
-			style={{
-				height: `calc(100dvh - 106px)`,
-			}}
-		>
-			<Spinner size="sm" />
-			<span className="text-xs text-default-500">加载中...</span>
-		</div>
-	);
+	const navigation = useContext(AdminNavigationContext);
+	const registerLoading = navigation?.registerLoading;
+	useLayoutEffect(() => registerLoading?.(), [registerLoading]);
+
+	// 后台路由和编辑器共用外壳的 loading，避免切换阶段时重复闪烁。
+	return navigation ? null : <AdminLoadingIndicator />;
 }

@@ -2,9 +2,9 @@
 
 import { Table, TableLayout, Virtualizer } from "@heroui/react";
 import type { ReactNode } from "react";
-import { useRef } from "react";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 
-import { TableHorizontalScrollbar } from "./table-horizontal-scrollbar";
+import { HorizontalScrollbar, useHorizontalScroll } from "./horizontal-scroll";
 
 type VirtualizedTableProps = {
 	children: ReactNode;
@@ -25,7 +25,12 @@ export function VirtualizedTable({
 	className,
 	minWidth,
 }: VirtualizedTableProps) {
-	const rootRef = useRef<HTMLDivElement>(null);
+	const contentScrollRef = useScrollContainment<HTMLTableElement>();
+	const { rootRef, ...scrollbar } = useHorizontalScroll({
+		children,
+		viewportSelector: ".table__scroll-container",
+		contentSelector: "[data-slot='table-content']",
+	});
 
 	return (
 		<Virtualizer
@@ -34,7 +39,7 @@ export function VirtualizedTable({
 		>
 			<div
 				ref={rootRef}
-				className={`relative max-w-full overflow-hidden rounded-2xl ${className ?? ""}`}
+				className={`group/horizontal-scroll relative max-w-full overflow-hidden rounded-2xl ${className ?? ""}`}
 			>
 				<Table
 					variant={variant}
@@ -43,18 +48,20 @@ export function VirtualizedTable({
 				>
 					<Table.ScrollContainer>
 						<Table.Content
+							ref={contentScrollRef}
 							aria-label={ariaLabel}
-							className="h-full min-h-96 max-h-[calc(100dvh-304px)] w-full overflow-y-scroll"
+							className="h-full min-h-96 max-h-[calc(100dvh-304px)] w-full overflow-y-auto"
 							style={minWidth ? { minWidth } : undefined}
 						>
 							{children}
 						</Table.Content>
 					</Table.ScrollContainer>
+					<HorizontalScrollbar
+						{...scrollbar}
+						label={ariaLabel}
+						className={variant === "primary" ? "inset-x-1 bottom-1" : undefined}
+					/>
 				</Table>
-				<TableHorizontalScrollbar
-					rootRef={rootRef}
-					aria-label={`${ariaLabel}横向滚动条`}
-				/>
 			</div>
 		</Virtualizer>
 	);

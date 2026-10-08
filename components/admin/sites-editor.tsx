@@ -1,5 +1,7 @@
 "use client";
 
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
+
 import {
     Button,
     Chip,
@@ -77,6 +79,7 @@ import {
     normalizeSitePreviewImages,
 } from "@/lib/site-detail";
 import { SiteDetailMarkdown } from "@/components/app-layout/site-detail-markdown";
+import { TableShell } from "@/components/ui/table-shell";
 import { IconPicker } from "./icon-picker";
 import {
     resolveConfiguredValue,
@@ -940,6 +943,8 @@ function DetailMarkdownEditor({
 }
 
 export function SitesEditor() {
+	const categoryScrollRef = useScrollContainment<HTMLDivElement>();
+	const contentScrollRef = useScrollContainment<HTMLDivElement>();
 	const [categories, setCategories] = useAtom(categoriesAtom);
 	const nav = useAtomValue(navAtom);
 	const value: WebsiteData = { categories };
@@ -1591,7 +1596,7 @@ export function SitesEditor() {
 						<div className="border-b border-gray-100 px-4 py-3 dark:border-neutral-800">
 							<h3 className="text-sm font-semibold">选择分类</h3>
 						</div>
-						<div className="flex-1 overflow-y-auto p-2 overscroll-none">
+						<div ref={categoryScrollRef} className="flex-1 overflow-y-auto p-2">
 							{renderCategoryList("desktop")}
 						</div>
 					</div>
@@ -1610,7 +1615,7 @@ export function SitesEditor() {
 								</Button>
 							</div>
 						) : (
-							<div className="flex h-full flex-col gap-4 overflow-y-scroll overscroll-none p-1 -m-1">
+							<div ref={contentScrollRef} className="flex h-full flex-col gap-4 overflow-y-auto p-1 -m-1">
 								<div className="flex flex-col gap-4 flex-wrap sm:flex-row sm:items-center sm:justify-between">
 									<div className="flex items-center gap-2 pt-1">
 										<span className="truncate font-medium text-lg!">
@@ -1673,7 +1678,7 @@ export function SitesEditor() {
 											items={sortableSiteIds}
 											strategy={verticalListSortingStrategy}
 										>
-											<Table variant="secondary" aria-label="网址列表">
+											<TableShell variant="secondary" aria-label="网址列表" stickyScrollbar>
 												<Table.ScrollContainer>
 													<Table.Content aria-label="网址列表">
 														<Table.Header>
@@ -1737,7 +1742,7 @@ export function SitesEditor() {
 														</Table.Body>
 													</Table.Content>
 												</Table.ScrollContainer>
-											</Table>
+											</TableShell>
 										</SortableContext>
 									)}
 								</div>

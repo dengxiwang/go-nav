@@ -7,6 +7,7 @@ import { AdBanner } from "./ad-banner";
 import type { AdConfig, CardStyle } from "@/types";
 import { categoriesAtom } from "@/lib/store/site";
 import { useJumpToSection } from "@/hooks/use-active-section";
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
 
 /**
  * 侧边栏容器（Jotai 订阅版）。
@@ -34,13 +35,16 @@ export const AppSidebar = memo(function AppSidebar({
 }) {
 	const categories = useAtomValue(categoriesAtom);
 	const onItemClick = useJumpToSection();
+	const sidebarScrollRef = useScrollContainment<HTMLElement>();
+	const categoryScrollRef = useScrollContainment<HTMLDivElement>();
 
 	return (
 		<aside
-			className="sticky top-16 hidden h-[calc(100dvh-4rem)] shrink-0 overflow-y-auto overscroll-none md:flex md:flex-col"
+			ref={sidebarScrollRef}
+			className="sticky top-16 hidden h-[calc(100dvh-4rem)] shrink-0 overflow-y-auto md:flex md:flex-col"
 			style={{ width }}
 		>
-			<div className="flex-1 min-h-0 overflow-y-auto">
+			<div ref={categoryScrollRef} className="flex-1 min-h-0 overflow-y-auto">
 				<CategorySidebar
 					categories={categories}
 					onItemClick={onItemClick}

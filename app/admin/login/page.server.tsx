@@ -11,7 +11,7 @@ import type { IconType } from "react-icons";
 export default async function AdminLoginPage() {
 	const store = await cookies();
 	if (verifySession(store.get(SESSION_COOKIE)?.value)) {
-		redirect("/admin");
+		redirect("/admin/categories/");
 	}
 	const nav = getNav();
 	const logoSrc = getIconImageSrc(nav.logo);

@@ -1,5 +1,7 @@
 "use client";
 
+import { useScrollContainment } from "@/hooks/use-scroll-containment";
+
 import {
 	AlertDialog,
 	Button,
@@ -184,6 +186,8 @@ export function DataSyncEditor() {
 	const [syncLogTitle, setSyncLogTitle] = useState("");
 	const [syncLogs, setSyncLogs] = useState<DataSyncProgressEvent[]>([]);
 	const syncLogBodyRef = useRef<HTMLDivElement | null>(null);
+	const syncLogScrollRef = useScrollContainment(syncLogBodyRef);
+	const backupListScrollRef = useScrollContainment<HTMLDivElement>();
 
 	const [webdavPickerOpen, setWebdavPickerOpen] = useState(false);
 	const [webdavBackupsLoading, setWebdavBackupsLoading] = useState(false);
@@ -915,7 +919,7 @@ export function DataSyncEditor() {
 								</span>
 							</div>
 							<div
-								ref={syncLogBodyRef}
+								ref={syncLogScrollRef}
 								className="sync-log-terminal h-80 overflow-y-auto rounded-lg border border-slate-700/80 bg-[#0b1220] px-3 py-2 shadow-inner"
 							>
 								{syncLogs.length === 0 ? (
@@ -965,7 +969,8 @@ export function DataSyncEditor() {
 								备份目录：<code>{draft.webdav.filePath}</code>
 							</p>
 							<div
-								className="h-72 overflow-y-auto overscroll-none rounded-lg border border-default-200 p-3"
+								ref={backupListScrollRef}
+								className="h-72 overflow-y-auto rounded-lg border border-default-200 p-3"
 								style={{
 									maxHeight: `calc(100% - 28.3px)`,
 								}}
