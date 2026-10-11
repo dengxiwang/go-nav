@@ -24,7 +24,6 @@ export function TableShell({ children, variant, "aria-label": ariaLabel, classNa
     <Table
       ref={rootRef}
       className={cn("group group/horizontal-scroll relative max-w-full", stickyScrollbar ? "overflow-visible" : "overflow-hidden", styles.table, className)}
-      data-fixed-right-shadow={scrollbar.state.hasOverflowAfter ? "true" : "false"}
       aria-label={ariaLabel}
       variant={variant}
     >
