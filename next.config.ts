@@ -63,6 +63,8 @@ const nextConfig: NextConfig = {
 		},
 	},
 	experimental: {
+		// 开发模式将 React 调试信息内联到 RSC，避免独立 WebSocket 调试流挂起时阻塞页面水合。
+		reactDebugChannel: false,
 		optimizePackageImports: ["@heroui/react"],
 	},
 	// 允许在开发模式下通过局域网 IP 访问（Server Action 跨域限制）
