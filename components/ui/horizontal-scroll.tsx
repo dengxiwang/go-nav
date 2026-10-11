@@ -9,10 +9,18 @@ const SCROLL_EDGE_TOLERANCE = 2;
 type HorizontalScrollState = {
   viewportWidth: number;
   scrollWidth: number;
-  scrollLeft: number;
   maxScrollLeft: number;
-  hasOverflowAfter: boolean;
 };
+
+type ScrollMeasurements = HorizontalScrollState & { contentEnd: number };
+
+function getThumbWidth(state: HorizontalScrollState) {
+  return state.scrollWidth > 0 ? Math.max(12, Math.min(100, (state.viewportWidth / state.scrollWidth) * 100)) : 100;
+}
+
+function setAttributeIfChanged(element: HTMLElement | null, name: string, value: string) {
+  if (element && element.getAttribute(name) !== value) element.setAttribute(name, value);
+}
 
 export function useHorizontalScroll({
   children,
@@ -24,101 +32,149 @@ export function useHorizontalScroll({
   contentSelector: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLElement | null>(null);
+  const measurementsRef = useRef<ScrollMeasurements | null>(null);
+  const scrollbarRef = useRef<HTMLDivElement>(null);
+  const thumbRef = useRef<HTMLSpanElement>(null);
   const scrollContainerId = useId();
   const [state, setState] = useState<HorizontalScrollState>({
     viewportWidth: 0,
     scrollWidth: 0,
-    scrollLeft: 0,
     maxScrollLeft: 0,
-    hasOverflowAfter: false,
   });
 
+  const getScrollLeft = useCallback(() => viewportRef.current?.scrollLeft ?? 0, []);
+
+  const syncScrollPosition = useCallback(() => {
+    const viewport = viewportRef.current;
+    const measurements = measurementsRef.current;
+    if (!viewport || !measurements) return;
+    const { maxScrollLeft, contentEnd } = measurements;
+    const scrollLeft = Math.min(maxScrollLeft, Math.max(0, viewport.scrollLeft));
+    const hasOverflowAfter = maxScrollLeft > SCROLL_EDGE_TOLERANCE
+      && contentEnd - scrollLeft > SCROLL_EDGE_TOLERANCE;
+    setAttributeIfChanged(rootRef.current, "data-fixed-right-shadow", String(hasOverflowAfter));
+    setAttributeIfChanged(scrollbarRef.current, "aria-valuenow", String(Math.round(scrollLeft)));
+    // translateX percentages use the thumb's width, not the track's width.
+    // Keep high-frequency positioning out of React rendering and layout.
+    const width = getThumbWidth(measurements);
+    const progress = maxScrollLeft > 0 ? scrollLeft / maxScrollLeft : 0;
+    const transform = `translateX(${progress * (100 - width) / width * 100}%)`;
+    if (thumbRef.current && thumbRef.current.style.transform !== transform) {
+      thumbRef.current.style.transform = transform;
+    }
+  }, []);
+
   const measure = useCallback(() => {
-    const root = rootRef.current;
-    const scrollContainer = root?.querySelector<HTMLElement>(viewportSelector);
-    if (!scrollContainer) return;
-    if (!scrollContainer.id) scrollContainer.id = scrollContainerId;
-    const maxScrollLeft = Math.max(0, scrollContainer.scrollWidth - scrollContainer.clientWidth);
-    const scrollLeft = Math.min(maxScrollLeft, Math.max(0, scrollContainer.scrollLeft));
-    const content = scrollContainer.querySelector<HTMLElement>(contentSelector);
-    const remainingContentWidth = content
-      ? content.getBoundingClientRect().right - scrollContainer.getBoundingClientRect().right
-      : maxScrollLeft - scrollLeft;
+    const viewport = viewportRef.current;
+    const viewportWidth = viewport?.clientWidth ?? 0;
+    const scrollWidth = viewport && viewportWidth > 0 ? viewport.scrollWidth : 0;
+    const maxScrollLeft = Math.max(0, scrollWidth - viewportWidth);
+    const content = viewport?.querySelector<HTMLElement>(contentSelector);
+    // Geometry is only read when content or size changes, never on scroll.
+    const contentEnd = viewport && viewportWidth > 0 && content
+      ? content.getBoundingClientRect().right - viewport.getBoundingClientRect().right + viewport.scrollLeft
+      : maxScrollLeft;
     const nextState = {
-      viewportWidth: Math.floor(scrollContainer.clientWidth),
-      scrollWidth: Math.floor(scrollContainer.scrollWidth),
-      scrollLeft,
+      viewportWidth: Math.floor(viewportWidth),
+      scrollWidth: Math.floor(scrollWidth),
       maxScrollLeft,
-      hasOverflowAfter: maxScrollLeft > SCROLL_EDGE_TOLERANCE
-        && remainingContentWidth > SCROLL_EDGE_TOLERANCE,
     };
+    measurementsRef.current = viewportWidth > 0 ? { ...nextState, contentEnd } : null;
+    if (!measurementsRef.current) setAttributeIfChanged(rootRef.current, "data-fixed-right-shadow", "false");
     setState((current) => (
       current.viewportWidth === nextState.viewportWidth
         && current.scrollWidth === nextState.scrollWidth
-        && current.scrollLeft === nextState.scrollLeft
         && current.maxScrollLeft === nextState.maxScrollLeft
-        && current.hasOverflowAfter === nextState.hasOverflowAfter
         ? current
         : nextState
     ));
-  }, [scrollContainerId, viewportSelector, contentSelector]);
+    syncScrollPosition();
+  }, [contentSelector, syncScrollPosition]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
     let frame = 0;
+    let observedViewport: HTMLElement | null = null;
+    let observedContent: HTMLElement | null = null;
+    const refresh = () => {
+      frame = 0;
+      const viewport = root.querySelector<HTMLElement>(viewportSelector);
+      const content = viewport?.querySelector<HTMLElement>(contentSelector) ?? null;
+      // Collections can mount/replace their viewport or content after the shell.
+      if (viewport !== observedViewport) {
+        if (observedViewport) {
+          resizeObserver.unobserve(observedViewport);
+          observedViewport.removeEventListener("scroll", syncScrollPosition);
+        }
+        observedViewport = viewport;
+        if (viewport) {
+          if (!viewport.id) viewport.id = scrollContainerId;
+          resizeObserver.observe(viewport);
+          viewport.addEventListener("scroll", syncScrollPosition, { passive: true });
+        }
+      }
+      if (content !== observedContent) {
+        if (observedContent) resizeObserver.unobserve(observedContent);
+        observedContent = content;
+        if (content) resizeObserver.observe(content);
+      }
+      viewportRef.current = viewport;
+      measure();
+    };
     const schedule = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
+      if (!frame) frame = requestAnimationFrame(refresh);
     };
     const resizeObserver = new ResizeObserver(schedule);
-    const scrollContainer = root.querySelector<HTMLElement>(viewportSelector);
-    if (scrollContainer && !scrollContainer.id) scrollContainer.id = scrollContainerId;
     resizeObserver.observe(root);
-    if (scrollContainer) {
-      resizeObserver.observe(scrollContainer);
-      scrollContainer.addEventListener("scroll", schedule, { passive: true });
-    }
-    const content = scrollContainer?.querySelector<HTMLElement>(contentSelector);
-    if (content) resizeObserver.observe(content);
     const mutationObserver = new MutationObserver(schedule);
     mutationObserver.observe(root, { childList: true, subtree: true });
     window.addEventListener("resize", schedule);
-    schedule();
+    refresh();
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", schedule);
-      scrollContainer?.removeEventListener("scroll", schedule);
+      observedViewport?.removeEventListener("scroll", syncScrollPosition);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
+      viewportRef.current = null;
+      measurementsRef.current = null;
     };
-  }, [measure, children, scrollContainerId, viewportSelector, contentSelector]);
+  }, [measure, syncScrollPosition, children, scrollContainerId, viewportSelector, contentSelector]);
 
-  const scrollTo = (value: number) => {
-    const container = rootRef.current?.querySelector<HTMLElement>(viewportSelector);
-    if (container) container.scrollLeft = Math.min(Math.max(0, value), state.maxScrollLeft);
-  };
-  return { rootRef, state, scrollContainerId, scrollTo };
+  const scrollTo = useCallback((value: number) => {
+    const viewport = viewportRef.current;
+    const measurements = measurementsRef.current;
+    if (viewport && measurements) viewport.scrollLeft = Math.min(Math.max(0, value), measurements.maxScrollLeft);
+  }, []);
+  return { rootRef, state, scrollContainerId, scrollTo, getScrollLeft, scrollbarRef, thumbRef, syncScrollPosition };
 }
 
 export function HorizontalScrollbar({
   state,
   scrollContainerId,
   scrollTo,
+  getScrollLeft,
+  scrollbarRef,
+  thumbRef,
+  syncScrollPosition,
   label,
   sticky = false,
   className,
-}: Pick<ReturnType<typeof useHorizontalScroll>, "state" | "scrollContainerId" | "scrollTo"> & {
+}: Pick<ReturnType<typeof useHorizontalScroll>, "state" | "scrollContainerId" | "scrollTo" | "getScrollLeft" | "scrollbarRef" | "thumbRef" | "syncScrollPosition"> & {
   label: string;
   sticky?: boolean;
   className?: string;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef<{ pointerId: number; startX: number; startScrollLeft: number } | null>(null);
+  // Overflow/size changes can mount a new thumb or change its width.
+  useLayoutEffect(syncScrollPosition, [state, syncScrollPosition]);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const step = 48;
-    if (event.key === "ArrowLeft") scrollTo(state.scrollLeft - step);
-    else if (event.key === "ArrowRight") scrollTo(state.scrollLeft + step);
+    if (event.key === "ArrowLeft") scrollTo(getScrollLeft() - step);
+    else if (event.key === "ArrowRight") scrollTo(getScrollLeft() + step);
     else if (event.key === "Home") scrollTo(0);
     else if (event.key === "End") scrollTo(state.maxScrollLeft);
     else return;
@@ -128,7 +184,7 @@ export function HorizontalScrollbar({
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     setIsDragging(true);
-    dragStateRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: state.scrollLeft };
+    dragStateRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: getScrollLeft() };
   };
   const onPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
     const dragState = dragStateRef.current;
@@ -155,19 +211,19 @@ export function HorizontalScrollbar({
     setIsDragging(false);
   };
 
-  const thumbWidth = state.scrollWidth > 0 ? Math.max(12, Math.min(100, (state.viewportWidth / state.scrollWidth) * 100)) : 100;
-  const thumbLeft = state.maxScrollLeft > 0 ? (state.scrollLeft / state.maxScrollLeft) * (100 - thumbWidth) : 0;
+  const thumbWidth = getThumbWidth(state);
 
   if (state.maxScrollLeft <= 1) return null;
   return (
     <div
+      ref={scrollbarRef}
       role="scrollbar"
       aria-controls={scrollContainerId}
       aria-label={`${label}横向滚动条`}
       aria-orientation="horizontal"
       aria-valuemin={0}
       aria-valuemax={Math.round(state.maxScrollLeft)}
-      aria-valuenow={Math.round(state.scrollLeft)}
+      aria-valuenow={0}
       tabIndex={0}
       data-dragging={isDragging || undefined}
       className={cn(
@@ -180,9 +236,10 @@ export function HorizontalScrollbar({
     >
       <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 rounded-full bg-default/80" />
       <span
+        ref={thumbRef}
         className="absolute inset-y-0 cursor-grab touch-none rounded-full before:absolute before:inset-x-0 before:bottom-0 before:h-1 before:rounded-full before:bg-muted/55 before:transition-colors hover:before:bg-muted/70 active:cursor-grabbing"
         aria-hidden="true"
-        style={{ left: `${thumbLeft}%`, width: `${thumbWidth}%` }}
+        style={{ left: 0, width: `${thumbWidth}%` }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={stopDragging}
