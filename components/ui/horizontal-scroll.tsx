@@ -6,15 +6,21 @@ import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 
 const SCROLL_EDGE_TOLERANCE = 2;
 
-type HorizontalScrollState = {
+type ScrollMeasurements = {
   viewportWidth: number;
   scrollWidth: number;
   maxScrollLeft: number;
+  contentEnd: number;
 };
 
-type ScrollMeasurements = HorizontalScrollState & { contentEnd: number };
+type ThumbDragState = {
+  pointerId: number;
+  startX: number;
+  startScrollLeft: number;
+  availableTrack: number;
+};
 
-function getThumbWidth(state: HorizontalScrollState) {
+function getThumbWidth(state: ScrollMeasurements) {
   return state.scrollWidth > 0 ? Math.max(12, Math.min(100, (state.viewportWidth / state.scrollWidth) * 100)) : 100;
 }
 
@@ -37,12 +43,11 @@ export function useHorizontalScroll({
   const scrollbarRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLSpanElement>(null);
   const scrollContainerId = useId();
-  const [state, setState] = useState<HorizontalScrollState>({
-    viewportWidth: 0,
-    scrollWidth: 0,
-    maxScrollLeft: 0,
-  });
+  const dragStateRef = useRef<ThumbDragState | null>(null);
+  const hasOverflowRef = useRef(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
 
+  const getMaxScrollLeft = useCallback(() => measurementsRef.current?.maxScrollLeft ?? 0, []);
   const getScrollLeft = useCallback(() => viewportRef.current?.scrollLeft ?? 0, []);
 
   const syncScrollPosition = useCallback(() => {
@@ -65,6 +70,16 @@ export function useHorizontalScroll({
     }
   }, []);
 
+  const syncScrollbar = useCallback(() => {
+    const measurements = measurementsRef.current;
+    if (!measurements) return;
+    // Read scrollLeft before writing width so resize does not force a second layout.
+    syncScrollPosition();
+    setAttributeIfChanged(scrollbarRef.current, "aria-valuemax", String(Math.round(measurements.maxScrollLeft)));
+    const width = `${getThumbWidth(measurements)}%`;
+    if (thumbRef.current && thumbRef.current.style.width !== width) thumbRef.current.style.width = width;
+  }, [syncScrollPosition]);
+
   const measure = useCallback(() => {
     const viewport = viewportRef.current;
     const viewportWidth = viewport?.clientWidth ?? 0;
@@ -75,22 +90,32 @@ export function useHorizontalScroll({
     const contentEnd = viewport && viewportWidth > 0 && content
       ? content.getBoundingClientRect().right - viewport.getBoundingClientRect().right + viewport.scrollLeft
       : maxScrollLeft;
-    const nextState = {
+    const measurements = viewportWidth > 0 ? {
       viewportWidth: Math.floor(viewportWidth),
       scrollWidth: Math.floor(scrollWidth),
       maxScrollLeft,
-    };
-    measurementsRef.current = viewportWidth > 0 ? { ...nextState, contentEnd } : null;
-    if (!measurementsRef.current) setAttributeIfChanged(rootRef.current, "data-fixed-right-shadow", "false");
-    setState((current) => (
-      current.viewportWidth === nextState.viewportWidth
-        && current.scrollWidth === nextState.scrollWidth
-        && current.maxScrollLeft === nextState.maxScrollLeft
-        ? current
-        : nextState
-    ));
-    syncScrollPosition();
-  }, [contentSelector, syncScrollPosition]);
+      contentEnd,
+    } : null;
+    measurementsRef.current = measurements;
+    const dragState = dragStateRef.current;
+    if (dragState && measurements && scrollbarRef.current) {
+      const trackWidth = scrollbarRef.current.getBoundingClientRect().width;
+      dragState.availableTrack = Math.max(1, trackWidth * (1 - getThumbWidth(measurements) / 100));
+    }
+    if (!measurements) setAttributeIfChanged(rootRef.current, "data-fixed-right-shadow", "false");
+    syncScrollbar();
+    const nextHasOverflow = maxScrollLeft > 1;
+    if (!nextHasOverflow) {
+      dragStateRef.current = null;
+      scrollbarRef.current?.removeAttribute("data-dragging");
+    }
+    // Continuous resizing only updates cached geometry and the scrollbar DOM.
+    // Re-render the collection only when the scrollbar mounts or unmounts.
+    if (hasOverflowRef.current !== nextHasOverflow) {
+      hasOverflowRef.current = nextHasOverflow;
+      setHasOverflow(nextHasOverflow);
+    }
+  }, [contentSelector, syncScrollbar]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -148,72 +173,74 @@ export function useHorizontalScroll({
     const measurements = measurementsRef.current;
     if (viewport && measurements) viewport.scrollLeft = Math.min(Math.max(0, value), measurements.maxScrollLeft);
   }, []);
-  return { rootRef, state, scrollContainerId, scrollTo, getScrollLeft, scrollbarRef, thumbRef, syncScrollPosition };
+  return { rootRef, hasOverflow, scrollContainerId, scrollTo, getScrollLeft, getMaxScrollLeft, scrollbarRef, thumbRef, dragStateRef, syncScrollbar };
 }
 
 export function HorizontalScrollbar({
-  state,
+  hasOverflow,
   scrollContainerId,
   scrollTo,
   getScrollLeft,
+  getMaxScrollLeft,
   scrollbarRef,
   thumbRef,
-  syncScrollPosition,
+  dragStateRef,
+  syncScrollbar,
   label,
   sticky = false,
   className,
-}: Pick<ReturnType<typeof useHorizontalScroll>, "state" | "scrollContainerId" | "scrollTo" | "getScrollLeft" | "scrollbarRef" | "thumbRef" | "syncScrollPosition"> & {
+}: Pick<ReturnType<typeof useHorizontalScroll>, "hasOverflow" | "scrollContainerId" | "scrollTo" | "getScrollLeft" | "getMaxScrollLeft" | "scrollbarRef" | "thumbRef" | "dragStateRef" | "syncScrollbar"> & {
   label: string;
   sticky?: boolean;
   className?: string;
 }) {
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStateRef = useRef<{ pointerId: number; startX: number; startScrollLeft: number } | null>(null);
-  // Overflow/size changes can mount a new thumb or change its width.
-  useLayoutEffect(syncScrollPosition, [state, syncScrollPosition]);
+  // Newly mounted thumbs need their cached width and position before paint.
+  useLayoutEffect(syncScrollbar, [hasOverflow, syncScrollbar]);
+  const clearDragState = () => {
+    dragStateRef.current = null;
+    scrollbarRef.current?.removeAttribute("data-dragging");
+  };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const step = 48;
     if (event.key === "ArrowLeft") scrollTo(getScrollLeft() - step);
     else if (event.key === "ArrowRight") scrollTo(getScrollLeft() + step);
     else if (event.key === "Home") scrollTo(0);
-    else if (event.key === "End") scrollTo(state.maxScrollLeft);
+    else if (event.key === "End") scrollTo(getMaxScrollLeft());
     else return;
     event.preventDefault();
   };
   const onPointerDown = (event: PointerEvent<HTMLSpanElement>) => {
+    const track = scrollbarRef.current;
+    if (!track) return;
+    const trackWidth = track.getBoundingClientRect().width;
+    const thumbWidth = event.currentTarget.getBoundingClientRect().width;
+    const startScrollLeft = getScrollLeft();
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    setIsDragging(true);
-    dragStateRef.current = { pointerId: event.pointerId, startX: event.clientX, startScrollLeft: getScrollLeft() };
+    setAttributeIfChanged(track, "data-dragging", "true");
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft,
+      availableTrack: Math.max(1, trackWidth - thumbWidth),
+    };
   };
   const onPointerMove = (event: PointerEvent<HTMLSpanElement>) => {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
     if (event.buttons === 0) {
       // 拖拽未正常收尾（窗口外松开、指针捕获丢失）时清理残留状态，悬停移动不再跟随。
-      dragStateRef.current = null;
-      setIsDragging(false);
+      clearDragState();
       return;
     }
-    const track = event.currentTarget.parentElement;
-    if (!track) return;
-    const thumbWidth = event.currentTarget.getBoundingClientRect().width;
-    const availableTrack = Math.max(1, track.getBoundingClientRect().width - thumbWidth);
-    scrollTo(dragState.startScrollLeft + ((event.clientX - dragState.startX) / availableTrack) * state.maxScrollLeft);
+    scrollTo(dragState.startScrollLeft + ((event.clientX - dragState.startX) / dragState.availableTrack) * getMaxScrollLeft());
   };
   const stopDragging = (event: PointerEvent<HTMLSpanElement>) => {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-    dragStateRef.current = null;
-    setIsDragging(false);
-  };
-  const onLostPointerCapture = () => {
-    dragStateRef.current = null;
-    setIsDragging(false);
+    clearDragState();
   };
 
-  const thumbWidth = getThumbWidth(state);
-
-  if (state.maxScrollLeft <= 1) return null;
+  if (!hasOverflow) return null;
   return (
     <div
       ref={scrollbarRef}
@@ -222,10 +249,9 @@ export function HorizontalScrollbar({
       aria-label={`${label}横向滚动条`}
       aria-orientation="horizontal"
       aria-valuemin={0}
-      aria-valuemax={Math.round(state.maxScrollLeft)}
+      aria-valuemax={0}
       aria-valuenow={0}
       tabIndex={0}
-      data-dragging={isDragging || undefined}
       className={cn(
         "bottom-0 z-40 h-3 cursor-default touch-none rounded-full opacity-0 outline-none transition-opacity group-hover/horizontal-scroll:opacity-100 focus-visible:opacity-100 data-[dragging=true]:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-1",
         // 负边距把 sticky 滚动条叠在内容底边，不额外占位或向内缩进。
@@ -239,12 +265,12 @@ export function HorizontalScrollbar({
         ref={thumbRef}
         className="absolute inset-y-0 cursor-grab touch-none rounded-full before:absolute before:inset-x-0 before:bottom-0 before:h-1 before:rounded-full before:bg-muted/55 before:transition-colors hover:before:bg-muted/70 active:cursor-grabbing"
         aria-hidden="true"
-        style={{ left: 0, width: `${thumbWidth}%` }}
+        style={{ left: 0 }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={stopDragging}
         onPointerCancel={stopDragging}
-        onLostPointerCapture={onLostPointerCapture}
+        onLostPointerCapture={clearDragState}
       />
     </div>
   );
