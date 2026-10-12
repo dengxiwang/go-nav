@@ -100,9 +100,7 @@ function MobileNavDrawerHost({
 			title={title}
 			logo={logo}
 		>
-			{open ? (
-				<MobileNavDrawerContent onItemClick={onItemClick} />
-			) : null}
+			<MobileNavDrawerContent onItemClick={onItemClick} />
 		</MobileNavDrawer>
 	);
 }

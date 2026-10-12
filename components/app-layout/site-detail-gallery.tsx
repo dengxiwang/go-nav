@@ -21,6 +21,7 @@ import {
 } from "react-icons/bi";
 import { Autoplay, Keyboard } from "swiper/modules";
 import { Swiper, SwiperSlide, type SwiperClass } from "swiper/react";
+import { useOverlayAfterClose } from "@/hooks/use-overlay-after-close";
 
 interface GalleryCardProps {
 	isAccessible: boolean;
@@ -198,6 +199,7 @@ export function SiteDetailGallery({
 	} | null>(null);
 	const [activeIndex, setActiveIndex] = useState(0);
 	const [isWideLayout, setIsWideLayout] = useState(false);
+	const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 	const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 	const [viewerTransitionDirection, setViewerTransitionDirection] =
 		useState<ViewerTransitionDirection>("initial");
@@ -324,6 +326,10 @@ export function SiteDetailGallery({
 		},
 		[commitViewerTransform, setViewerDragging],
 	);
+	const previewBackdropRef = useOverlayAfterClose(isPreviewOpen, () => {
+		setPreviewIndex(null);
+		resetViewer(false);
+	});
 	const zoomViewerAt = useCallback(
 		(nextZoom: number, focalX = 0, focalY = 0, animate = false) => {
 			commitViewerTransform((current) => {
@@ -360,10 +366,11 @@ export function SiteDetailGallery({
 	const openPreview = useCallback((index: number) => {
 		setViewerTransitionDirection("initial");
 		setPreviewIndex(index);
+		setIsPreviewOpen(true);
 	}, []);
 	const selectPreview = useCallback(
 		(index: number) => {
-			if (previewIndex === index) return;
+			if (!isPreviewOpen || previewIndex === index) return;
 			setViewerTransitionDirection(
 				previewIndex === null
 					? "initial"
@@ -373,18 +380,18 @@ export function SiteDetailGallery({
 			);
 			setPreviewIndex(index);
 		},
-		[previewIndex],
+		[isPreviewOpen, previewIndex],
 	);
 	const showPreviousPreview = useCallback(() => {
-		if (previewIndex === null || previewIndex <= 0) return;
+		if (!isPreviewOpen || previewIndex === null || previewIndex <= 0) return;
 		setViewerTransitionDirection("previous");
 		setPreviewIndex(previewIndex - 1);
-	}, [previewIndex]);
+	}, [isPreviewOpen, previewIndex]);
 	const showNextPreview = useCallback(() => {
-		if (previewIndex === null || previewIndex >= total - 1) return;
+		if (!isPreviewOpen || previewIndex === null || previewIndex >= total - 1) return;
 		setViewerTransitionDirection("next");
 		setPreviewIndex(previewIndex + 1);
-	}, [previewIndex, total]);
+	}, [isPreviewOpen, previewIndex, total]);
 	const stopViewerThumbnailMomentum = useCallback(() => {
 		if (viewerThumbnailMomentumFrameRef.current === null) return;
 		cancelAnimationFrame(viewerThumbnailMomentumFrameRef.current);
@@ -420,7 +427,19 @@ export function SiteDetailGallery({
 	);
 
 	useEffect(() => {
-		if (previewIndex === null) return;
+		if (isPreviewOpen) return;
+		stopViewerThumbnailMomentum();
+		viewerThumbnailDragRef.current = null;
+		viewerThumbnailSuppressClickRef.current = false;
+		viewerDragRef.current = null;
+		viewerPinchRef.current = null;
+		viewerSwipeRef.current = null;
+		viewerPointersRef.current.clear();
+		setViewerDragging(false);
+	}, [isPreviewOpen, setViewerDragging, stopViewerThumbnailMomentum]);
+
+	useEffect(() => {
+		if (!isPreviewOpen || previewIndex === null) return;
 		stopViewerThumbnailMomentum();
 		let centerFrame: number | null = null;
 		const centerActiveThumbnail = (behavior: ScrollBehavior) => {
@@ -448,7 +467,7 @@ export function SiteDetailGallery({
 			if (centerFrame !== null) cancelAnimationFrame(centerFrame);
 			observer.disconnect();
 		};
-	}, [previewIndex, stopViewerThumbnailMomentum]);
+	}, [isPreviewOpen, previewIndex, stopViewerThumbnailMomentum]);
 
 	useEffect(() => {
 		const autoplay = swiperRef.current?.autoplay;
@@ -467,7 +486,7 @@ export function SiteDetailGallery({
 	}, [previewIndex]);
 
 	useEffect(() => {
-		resetViewer(false);
+		if (previewIndex !== null) resetViewer(false);
 	}, [previewIndex, resetViewer]);
 
 	useEffect(
@@ -481,7 +500,7 @@ export function SiteDetailGallery({
 	);
 
 	useEffect(() => {
-		if (previewIndex === null) return;
+		if (!isPreviewOpen || previewIndex === null) return;
 		const syncViewerBounds = () => {
 			updateViewerLayout();
 			commitViewerTransform((current) => current);
@@ -494,10 +513,10 @@ export function SiteDetailGallery({
 			window.removeEventListener("resize", syncViewerBounds);
 			window.visualViewport?.removeEventListener("resize", syncViewerBounds);
 		};
-	}, [commitViewerTransform, previewIndex, updateViewerLayout]);
+	}, [commitViewerTransform, isPreviewOpen, previewIndex, updateViewerLayout]);
 
 	useEffect(() => {
-		if (previewIndex === null) return;
+		if (!isPreviewOpen || previewIndex === null) return;
 		const stage = viewerStageRef.current;
 		if (!stage) return;
 
@@ -627,6 +646,7 @@ export function SiteDetailGallery({
 		};
 	}, [
 		commitViewerTransform,
+		isPreviewOpen,
 		previewIndex,
 		showNextPreview,
 		showPreviousPreview,
@@ -634,7 +654,7 @@ export function SiteDetailGallery({
 	]);
 
 	useEffect(() => {
-		if (previewIndex === null) return;
+		if (!isPreviewOpen || previewIndex === null) return;
 		const handleKeyDown = (event: KeyboardEvent) => {
 			switch (event.key) {
 				case "ArrowLeft":
@@ -668,6 +688,7 @@ export function SiteDetailGallery({
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [
+		isPreviewOpen,
 		previewIndex,
 		resetViewer,
 		rotateViewer,
@@ -842,10 +863,11 @@ export function SiteDetailGallery({
 
 			<Modal>
 				<Modal.Backdrop
+					ref={previewBackdropRef}
 					isDismissable
-					isOpen={previewIndex !== null}
+					isOpen={isPreviewOpen}
 					onOpenChange={(open) => {
-						if (!open) setPreviewIndex(null);
+						if (!open) setIsPreviewOpen(false);
 					}}
 					className="z-1000"
 				>
@@ -857,10 +879,12 @@ export function SiteDetailGallery({
 							<Modal.Body className="m-0! p-0!">
 								<div
 									ref={viewerStageRef}
+									inert={!isPreviewOpen}
 									data-dragging="false"
 									data-zoomed="false"
 									className="relative flex h-dvh min-h-80 cursor-default select-none items-center justify-center overflow-hidden bg-transparent px-3 pt-12 pb-32 data-[dragging=true]:cursor-grabbing data-[zoomed=true]:cursor-grab sm:px-8 sm:pt-8 sm:pb-36"
 									onDoubleClick={(event) => {
+										if (!isPreviewOpen) return;
 										if (
 											(event.target as HTMLElement).closest("[data-viewer-ui]")
 										)
@@ -874,6 +898,7 @@ export function SiteDetailGallery({
 										);
 									}}
 									onPointerDown={(event) => {
+										if (!isPreviewOpen) return;
 										if (
 											(event.target as HTMLElement).closest("[data-viewer-ui]")
 										)
@@ -947,6 +972,7 @@ export function SiteDetailGallery({
 										}
 									}}
 									onPointerMove={(event) => {
+										if (!isPreviewOpen) return;
 										if (!viewerPointersRef.current.has(event.pointerId)) return;
 										event.preventDefault();
 										viewerPointersRef.current.set(event.pointerId, {
@@ -1040,6 +1066,7 @@ export function SiteDetailGallery({
 										}));
 									}}
 									onPointerUp={(event) => {
+										if (!isPreviewOpen) return;
 										const swipe = viewerSwipeRef.current;
 										if (swipe?.pointerId === event.pointerId) {
 											const deltaX = swipe.currentX - swipe.startX;
@@ -1087,6 +1114,7 @@ export function SiteDetailGallery({
 										}
 									}}
 									onPointerCancel={(event) => {
+										if (!isPreviewOpen) return;
 										settleViewerSwipe();
 										viewerPointersRef.current.delete(event.pointerId);
 										viewerDragRef.current = null;
@@ -1106,7 +1134,7 @@ export function SiteDetailGallery({
 												viewerInteractionMovedRef.current = false;
 												return;
 											}
-											setPreviewIndex(null);
+											setIsPreviewOpen(false);
 										}}
 									/>
 									<Modal.CloseTrigger
@@ -1125,6 +1153,7 @@ export function SiteDetailGallery({
 											data-direction={viewerTransitionDirection}
 											draggable={false}
 											onLoad={() => {
+												if (!isPreviewOpen) return;
 												updateViewerLayout();
 												commitViewerTransform((current) => current);
 											}}
@@ -1180,6 +1209,7 @@ export function SiteDetailGallery({
 													className="w-full cursor-grab overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] active:cursor-grabbing sm:px-1.5 sm:py-1.5 [&::-webkit-scrollbar]:hidden"
 													style={{ touchAction: "pan-x" }}
 													onWheel={(event) => {
+														if (!isPreviewOpen) return;
 														event.stopPropagation();
 														if (
 															Math.abs(event.deltaX) >= Math.abs(event.deltaY)
@@ -1192,6 +1222,7 @@ export function SiteDetailGallery({
 														});
 													}}
 													onPointerDown={(event) => {
+														if (!isPreviewOpen) return;
 														if (
 															event.button !== 0 ||
 															event.pointerType !== "mouse"
@@ -1212,6 +1243,7 @@ export function SiteDetailGallery({
 														};
 													}}
 													onPointerMove={(event) => {
+														if (!isPreviewOpen) return;
 														const drag = viewerThumbnailDragRef.current;
 														if (!drag || drag.pointerId !== event.pointerId)
 															return;
@@ -1236,6 +1268,7 @@ export function SiteDetailGallery({
 															drag.scrollLeft - deltaX;
 													}}
 													onPointerUp={(event) => {
+														if (!isPreviewOpen) return;
 														const drag = viewerThumbnailDragRef.current;
 														if (!drag || drag.pointerId !== event.pointerId)
 															return;
@@ -1259,6 +1292,7 @@ export function SiteDetailGallery({
 														}
 													}}
 													onPointerCancel={(event) => {
+														if (!isPreviewOpen) return;
 														viewerThumbnailSuppressClickRef.current = false;
 														viewerThumbnailDragRef.current = null;
 														stopViewerThumbnailMomentum();

@@ -275,6 +275,7 @@ export function CategoriesEditor() {
 		path: string[];
 	} | null>(null);
 	const [formState, setFormState] = useState<CategoryFormState>(emptyForm);
+	const [deleteTargetName, setDeleteTargetName] = useState("");
 	const [deleteTarget, setDeleteTarget] = useState<{
 		category: NavCategory;
 		path: string[];
@@ -608,7 +609,10 @@ export function CategoriesEditor() {
 
 	const openDeleteDialog = (categoryId: string) => {
 		const target = findCategoryPath(categoryId);
-		if (target) setDeleteTarget(target);
+		if (target) {
+			setDeleteTargetName(target.category.name);
+			setDeleteTarget(target);
+		}
 	};
 
 	const renderCategoryTree = () =>
@@ -974,7 +978,7 @@ export function CategoriesEditor() {
 						</AlertDialog.Header>
 						<AlertDialog.Body>
 							<p>
-								删除 <strong>{deleteTarget?.category.name}</strong>{" "}
+								删除 <strong>{deleteTargetName}</strong>{" "}
 								后，其下的所有子分类和网站数据都将被永久删除，此操作不可撤销。
 							</p>
 						</AlertDialog.Body>

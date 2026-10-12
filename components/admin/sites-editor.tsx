@@ -1,6 +1,7 @@
 "use client";
 
 import { useScrollContainment } from "@/hooks/use-scroll-containment";
+import { useOverlayAfterClose } from "@/hooks/use-overlay-after-close";
 
 import {
     Button,
@@ -964,8 +965,18 @@ export function SitesEditor() {
 		string | null
 	>(null);
 	const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
+	const [deleteTargetName, setDeleteTargetName] = useState("");
 	const [fetchingInfo, setFetchingInfo] = useState(false);
 	const [capturingPreview, setCapturingPreview] = useState(false);
+	const editingSessionRef = useRef(0);
+	const editingOverlayRef = useOverlayAfterClose(isModalOpen, () => {
+		setEditingSite(null);
+		setEditingIndex(-1);
+		setEditingCategoryId(null);
+		setEditingSourceCategoryId(null);
+		setFetchingInfo(false);
+		setCapturingPreview(false);
+	});
 	const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
 		collectExpandableIds(categories),
 	);
@@ -1281,14 +1292,14 @@ export function SitesEditor() {
 	};
 
 	const closeSiteModal = () => {
+		editingSessionRef.current += 1;
 		setIsModalOpen(false);
-		setEditingSite(null);
-		setEditingIndex(-1);
-		setEditingCategoryId(null);
-		setEditingSourceCategoryId(null);
 	};
 
 	const openAddModal = () => {
+		editingSessionRef.current += 1;
+		setFetchingInfo(false);
+		setCapturingPreview(false);
 		setEditingSite({
 			title: "",
 			description: "",
@@ -1309,6 +1320,9 @@ export function SitesEditor() {
 	};
 
 	const openEditModal = (site: NavSite, index: number) => {
+		editingSessionRef.current += 1;
+		setFetchingInfo(false);
+		setCapturingPreview(false);
 		setEditingSite({ ...site });
 		setEditingIndex(index);
 		setEditingCategoryId(selectedCategory);
@@ -1317,7 +1331,7 @@ export function SitesEditor() {
 	};
 
 	const saveSite = async () => {
-		if (!editingSite) return;
+		if (!isModalOpen || !editingSite) return;
 		if (!editingSite.title.trim()) {
 			toast.warning("网站名称不能为空");
 			return;
@@ -1392,6 +1406,8 @@ export function SitesEditor() {
 	};
 
 	const fetchWebsiteInfo = async () => {
+		if (!isModalOpen) return;
+		const session = editingSessionRef.current;
 		if (!editingSite?.url?.trim()) {
 			toast.warning("请先输入网站地址");
 			return;
@@ -1414,6 +1430,7 @@ export function SitesEditor() {
 				keywords?: string[];
 			};
 
+			if (session !== editingSessionRef.current) return;
 			setEditingSite((prev) => {
 				if (!prev) return prev;
 				const updated = { ...prev };
@@ -1434,13 +1451,17 @@ export function SitesEditor() {
 
 			toast.success("网站信息获取成功");
 		} catch (e) {
-			toast.warning((e as Error).message || "获取网站信息失败");
+			if (session === editingSessionRef.current) {
+				toast.warning((e as Error).message || "获取网站信息失败");
+			}
 		} finally {
-			setFetchingInfo(false);
+			if (session === editingSessionRef.current) setFetchingInfo(false);
 		}
 	};
 
 	const captureWebsitePreview = async () => {
+		if (!isModalOpen) return;
+		const session = editingSessionRef.current;
 		if (!editingSite?.url?.trim()) {
 			toast.warning("请先输入网站地址");
 			return;
@@ -1457,15 +1478,23 @@ export function SitesEditor() {
 				throw new Error(data.error || "获取预览图失败");
 			}
 			const data = (await res.json()) as { url: string };
+			if (session !== editingSessionRef.current) return;
 			setEditingSite((prev) =>
 				prev ? { ...prev, previewImage: data.url } : prev,
 			);
 			toast.success("预览图获取成功");
 		} catch (e) {
-			toast.warning((e as Error).message || "获取预览图失败");
+			if (session === editingSessionRef.current) {
+				toast.warning((e as Error).message || "获取预览图失败");
+			}
 		} finally {
-			setCapturingPreview(false);
+			if (session === editingSessionRef.current) setCapturingPreview(false);
 		}
+	};
+
+	const requestDeleteSite = (index: number | null) => {
+		if (index !== null) setDeleteTargetName(currentSites[index]?.title ?? "");
+		setDeleteTarget(index);
 	};
 
 	const deleteSite = (index: number) => {
@@ -1729,7 +1758,7 @@ export function SitesEditor() {
 																		currentSites={currentSites}
 																		moveSite={moveSite}
 																		openEditModal={openEditModal}
-																		setDeleteTarget={setDeleteTarget}
+																		setDeleteTarget={requestDeleteSite}
 																		defaultIconPadding={defaultIconPadding}
 																		autoUseIntranet={autoUseIntranet}
 																		registerRowElement={registerRowElement}
@@ -1778,6 +1807,7 @@ export function SitesEditor() {
 				</Drawer.Backdrop>
 
 				<Modal.Backdrop
+					ref={editingOverlayRef}
 					isOpen={isModalOpen}
 					onOpenChange={(open) => !open && closeSiteModal()}
 				>
@@ -2013,7 +2043,7 @@ export function SitesEditor() {
 							</AlertDialog.Header>
 							<AlertDialog.Body>
 								<p>
-									删除 <strong>{currentSites[deleteTarget ?? 0]?.title}</strong>{" "}
+									删除 <strong>{deleteTargetName}</strong>{" "}
 									后，该网址数据将被永久删除，此操作不可撤销。
 								</p>
 							</AlertDialog.Body>

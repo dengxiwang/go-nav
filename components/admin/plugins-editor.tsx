@@ -26,6 +26,7 @@ import {
 	BiTrash,
 } from "react-icons/bi";
 import { pluginAtomFamily, pluginsAtom } from "@/lib/store/admin";
+import { useOverlayAfterClose } from "@/hooks/use-overlay-after-close";
 import type { PluginConfig } from "@/types";
 import { AdminSwitch } from "./admin-switch";
 
@@ -247,6 +248,8 @@ function getTypeIcon(type: PluginConfig["type"]) {
 export function PluginsEditor() {
 	const [plugins, setPlugins] = useAtom(pluginsAtom);
 	const [editing, setEditing] = useState<EditingState>(null);
+	const [isEditingOpen, setIsEditingOpen] = useState(false);
+	const editingOverlayRef = useOverlayAfterClose(isEditingOpen, () => setEditing(null));
 	const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
 	const counts = useMemo(() => {
@@ -266,6 +269,7 @@ export function PluginsEditor() {
 
 	const addPlugin = () => {
 		setEditing({ mode: "create", draft: makeEmptyPlugin() });
+		setIsEditingOpen(true);
 	};
 
 	const addTemplatePlugin = (templateId: PluginTemplateId) => {
@@ -287,7 +291,7 @@ export function PluginsEditor() {
 	};
 
 	const commitEditing = () => {
-		if (!editing) return;
+		if (!isEditingOpen || !editing) return;
 		const draft = editing.draft;
 		if (!draft.name.trim()) return;
 		if ((draft.type === "css" || draft.type === "js") && !draft.code.trim()) {
@@ -312,7 +316,7 @@ export function PluginsEditor() {
 				setPlugins(copy);
 			}
 		}
-		setEditing(null);
+		setIsEditingOpen(false);
 	};
 
 	return (
@@ -427,13 +431,14 @@ export function PluginsEditor() {
 										pluginId={plugin.id}
 										isFirst={idx === 0}
 										isLast={idx === plugins.length - 1}
-										onEdit={() =>
+										onEdit={() => {
 											setEditing({
 												mode: "edit",
 												id: plugin.id,
 												draft: { ...plugin },
-											})
-										}
+											});
+											setIsEditingOpen(true);
+										}}
 										onDelete={() => setDeleteConfirm(plugin.id)}
 										onMoveUp={() => movePlugin(idx, "up")}
 										onMoveDown={() => movePlugin(idx, "down")}
@@ -446,8 +451,9 @@ export function PluginsEditor() {
 			)}
 
 				<Drawer.Backdrop
-					isOpen={editing !== null}
-					onOpenChange={(open) => !open && setEditing(null)}
+					ref={editingOverlayRef}
+					isOpen={isEditingOpen}
+					onOpenChange={(open) => !open && setIsEditingOpen(false)}
 				>
 					<Drawer.Content placement="right">
 						<Drawer.Dialog className="w-dvw max-w-xl bg-white dark:bg-neutral-900">
@@ -472,7 +478,7 @@ export function PluginsEditor() {
 								) : null}
 							</Drawer.Body>
 							<Drawer.Footer>
-								<Button variant="outline" onPress={() => setEditing(null)}>
+								<Button variant="outline" onPress={() => setIsEditingOpen(false)}>
 									取消
 								</Button>
 								<Button variant="primary" onPress={commitEditing}>
