@@ -22,6 +22,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { TableShell } from "@/components/ui/table-shell";
 import { CrudPagination } from "@/components/ui/crud-pagination";
+import { useOverlayAfterClose } from "@/hooks/use-overlay-after-close";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BiCheck, BiLinkExternal, BiRefresh, BiX } from "react-icons/bi";
 import { SiteIcon } from "@/components/site-icon";
@@ -160,6 +161,11 @@ export function SubmissionEditor() {
 	const [reviewing, setReviewing] = useState<SiteSubmission | null>(null);
 	const [reviewForm, setReviewForm] = useState<ReviewForm>(EMPTY_REVIEW_FORM);
 	const [reviewPending, setReviewPending] = useState(false);
+	const [isReviewOpen, setIsReviewOpen] = useState(false);
+	const reviewOverlayRef = useOverlayAfterClose(isReviewOpen, () => {
+		setReviewing(null);
+		setReviewForm(EMPTY_REVIEW_FORM);
+	});
 	const [statusFilter, setStatusFilter] =
 		useState<SubmissionStatusFilter>("all");
 	const [page, setPage] = useState(1);
@@ -196,6 +202,7 @@ export function SubmissionEditor() {
 
 	const openReview = (submission: SiteSubmission) => {
 		setReviewing(submission);
+		setIsReviewOpen(true);
 		setReviewForm({
 			title: submission.title,
 			url: submission.url,
@@ -209,12 +216,11 @@ export function SubmissionEditor() {
 
 	const closeReview = () => {
 		if (reviewPending) return;
-		setReviewing(null);
-		setReviewForm(EMPTY_REVIEW_FORM);
+		setIsReviewOpen(false);
 	};
 
 	const submitReview = async (action: "approve" | "reject") => {
-		if (!reviewing || reviewPending) return;
+		if (!isReviewOpen || !reviewing || reviewPending) return;
 		if (action === "approve" && dirty) {
 			toast.warning("请先保存页面顶部的配置改动，再执行收录");
 			return;
@@ -260,8 +266,7 @@ export function SubmissionEditor() {
 				});
 			}
 			toast.success(action === "approve" ? "已收录到指定分类" : "已驳回投稿");
-			setReviewing(null);
-			setReviewForm(EMPTY_REVIEW_FORM);
+			setIsReviewOpen(false);
 		} catch (error) {
 			toast.danger((error as Error).message || "审核失败");
 		} finally {
@@ -610,7 +615,8 @@ export function SubmissionEditor() {
 			</section>
 
 				<Modal.Backdrop
-					isOpen={reviewing !== null}
+					ref={reviewOverlayRef}
+					isOpen={isReviewOpen}
 					isDismissable={!reviewPending}
 					isKeyboardDismissDisabled={reviewPending}
 					onOpenChange={(open) => !open && closeReview()}

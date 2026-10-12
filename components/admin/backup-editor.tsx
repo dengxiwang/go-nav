@@ -1,6 +1,7 @@
 "use client";
 
 import { useScrollContainment } from "@/hooks/use-scroll-containment";
+import { useOverlayAfterClose } from "@/hooks/use-overlay-after-close";
 
 import { Button, Modal, toast } from "@heroui/react";
 import { useRef, useState } from "react";
@@ -52,6 +53,8 @@ export function BackupEditor() {
 	const [scanning, setScanning] = useState(false);
 	const [cleaning, setCleaning] = useState(false);
 	const [preview, setPreview] = useState<CleanupPreview | null>(null);
+	const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+	const previewOverlayRef = useOverlayAfterClose(isPreviewOpen, () => setPreview(null));
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	const handleDownload = async () => {
@@ -177,6 +180,7 @@ export function BackupEditor() {
 				total: d.total ?? 0,
 				orphanCount: d.orphanCount ?? (d.orphans?.length ?? 0),
 			});
+			setIsPreviewOpen(true);
 		} catch (e) {
 			toast.danger((e as Error).message);
 		} finally {
@@ -185,7 +189,7 @@ export function BackupEditor() {
 	};
 
 	const handleConfirmCleanup = async () => {
-		if (cleaning) return;
+		if (!isPreviewOpen || !preview || preview.orphanCount === 0 || cleaning) return;
 		setCleaning(true);
 		try {
 			const res = await fetch("/api/backup/cleanup/", { method: "POST" });
@@ -203,7 +207,7 @@ export function BackupEditor() {
 			} else {
 				toast.success(`已清理 ${d.deletedCount ?? 0} 个无用素材`);
 			}
-			setPreview(null);
+			setIsPreviewOpen(false);
 		} catch (e) {
 			toast.danger((e as Error).message);
 		} finally {
@@ -338,8 +342,9 @@ export function BackupEditor() {
 
 			{/* 清理预览确认弹窗 */}
 				<Modal.Backdrop
-					isOpen={preview !== null}
-					onOpenChange={(open) => !open && !cleaning && setPreview(null)}
+					ref={previewOverlayRef}
+					isOpen={isPreviewOpen}
+					onOpenChange={(open) => !open && !cleaning && setIsPreviewOpen(false)}
 				>
 					<Modal.Container>
 						<Modal.Dialog>
@@ -381,7 +386,7 @@ export function BackupEditor() {
 								<Button
 									variant="outline"
 									isDisabled={cleaning}
-									onPress={() => setPreview(null)}
+									onPress={() => setIsPreviewOpen(false)}
 								>
 									取消
 								</Button>

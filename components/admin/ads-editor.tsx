@@ -66,6 +66,7 @@ function placementName(placement: AdDisplayPosition) {
 export function AdsEditor() {
 	const [value, setValue] = useAtom(navAtom);
 	const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+	const [deleteConfirmTitle, setDeleteConfirmTitle] = useState("该广告");
 	const onChange = (next: NavConfig) => setValue(next);
 	const legacyPlacement = value.adsDisplayPosition;
 
@@ -155,7 +156,10 @@ export function AdsEditor() {
 		onChange({ ...value, homeAdsGap: resolveHomeAdsGap(homeAdsGap) });
 	};
 
-	const deletingAd = value.ads.find((ad) => ad.id === deleteConfirm);
+	const openDeleteDialog = (id: string) => {
+		setDeleteConfirmTitle(value.ads.find((ad) => ad.id === id)?.title ?? "该广告");
+		setDeleteConfirm(id);
+	};
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -199,7 +203,7 @@ export function AdsEditor() {
 						onVisibleCountChange={setVisibleCount}
 						onAdd={() => addAd("home-top")}
 						onChange={(ad) => updateAd(ad.id, ad)}
-						onDelete={setDeleteConfirm}
+						onDelete={openDeleteDialog}
 						onMove={(id, direction) => moveAd(id, "home-top", direction)}
 						onMovePlacement={(ad) =>
 							updateAd(ad.id, { ...ad, placement: "sidebar" })
@@ -223,7 +227,7 @@ export function AdsEditor() {
 						onRatioChange={(ratio) => setRatio("sidebar", ratio)}
 						onAdd={() => addAd("sidebar")}
 						onChange={(ad) => updateAd(ad.id, ad)}
-						onDelete={setDeleteConfirm}
+						onDelete={openDeleteDialog}
 						onMove={(id, direction) => moveAd(id, "sidebar", direction)}
 						onMovePlacement={(ad) =>
 							updateAd(ad.id, { ...ad, placement: "home-top" })
@@ -243,7 +247,7 @@ export function AdsEditor() {
 							</Modal.Header>
 							<Modal.Body>
 								<p className="text-sm text-gray-600 dark:text-neutral-300">
-									删除“{deletingAd?.title ?? "该广告"}”后无法恢复。
+									删除“{deleteConfirmTitle}”后无法恢复。
 								</p>
 							</Modal.Body>
 							<Modal.Footer>

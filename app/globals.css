@@ -8,6 +8,9 @@
 	--background: #f5f5f5;
 	--primary: #2d85f0;
 	--primary-foreground: #ffffff;
+	--overlay-enter-duration: 220ms;
+	--overlay-exit-duration: 180ms;
+	--overlay-ease: ease;
 }
 
 .dark {
@@ -166,6 +169,40 @@ html[data-focus-ring="off"]
 	opacity: 1 !important;
 	transform: none !important;
 	transition: none !important;
+}
+
+/* 面板与遮罩保持同一节奏，退出卸载仍交给 React Aria。 */
+.drawer__dialog {
+	--drawer-enter-duration: var(--overlay-enter-duration);
+	--drawer-exit-duration: var(--overlay-exit-duration);
+	--drawer-enter-ease: var(--overlay-ease);
+	--drawer-exit-ease: var(--overlay-ease);
+}
+
+.drawer__backdrop {
+	transition-duration: var(--overlay-enter-duration);
+	transition-timing-function: var(--overlay-ease);
+}
+
+.drawer__backdrop[data-exiting="true"] {
+	transition-duration: var(--overlay-exit-duration);
+}
+
+/* 弹窗使用关键帧，避免无关属性的 transition 干扰退出。 */
+:is(.modal__backdrop, .modal__container, .alert-dialog__backdrop, .alert-dialog__container) {
+	transition-property: none;
+}
+
+:is(.modal__backdrop, .modal__container, .alert-dialog__backdrop, .alert-dialog__container)[data-entering="true"] {
+	animation-duration: var(--overlay-enter-duration);
+	animation-timing-function: var(--overlay-ease);
+	animation-fill-mode: both;
+}
+
+:is(.modal__backdrop, .modal__container, .alert-dialog__backdrop, .alert-dialog__container)[data-exiting="true"] {
+	animation-duration: var(--overlay-exit-duration);
+	animation-timing-function: var(--overlay-ease);
+	animation-fill-mode: both;
 }
 
 /* 确保 modal 的表单边框不被遮挡 */
