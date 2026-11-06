@@ -5,6 +5,7 @@
  * 组件按需订阅衍生 atom，配合 Provider 隔离保证每次请求独立。
  */
 import { atom } from "jotai";
+import { atomFamily } from "jotai-family";
 import type { Key } from "@heroui/react";
 import type { LayoutConfig, NavCategory, NavConfig, NavSite, WebsiteData } from "@/types";
 import { pluginHasRenderablePayload } from "@/lib/plugin-config";
@@ -211,6 +212,21 @@ export const enabledPluginsAtom = atom((get) => {
 
 /** 当前滚动位置对应的活跃分类 id，由 useActiveSection 写入 */
 export const activeIdAtom = atom<string | undefined>(undefined);
+
+// 标签组件在详情页期间会卸载，选择状态留在站点 Store 中，返回时直接复用。
+export const selectedSubcategoryIdsAtom = atom<Partial<Record<string, string>>>({});
+
+export const selectedSubcategoryIdAtomFamily = atomFamily((categoryId: string) =>
+	atom(
+		(get) => get(selectedSubcategoryIdsAtom)[categoryId],
+		(_get, set, selectedId: string) => {
+			set(selectedSubcategoryIdsAtom, (previous) => ({
+				...previous,
+				[categoryId]: selectedId,
+			}));
+		},
+	),
+);
 
 /** 移动端导航抽屉开关 */
 export const navDrawerOpenAtom = atom(false);

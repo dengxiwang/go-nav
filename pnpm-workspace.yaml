@@ -5,7 +5,9 @@ confirmModulesPurge: false
 verifyDepsBeforeRun: false
 
 overrides:
-  '@codemirror/view': 6.43.10
+  # CodeMirror 的状态和视图模块需统一版本，避免多份实例导致类型或扩展冲突。
+  '@codemirror/state': 6.7.6
+  '@codemirror/view': 6.43.15
 
 allowBuilds:
   sharp: true

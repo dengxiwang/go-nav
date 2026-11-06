@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, type MouseEvent } from "react";
+import { useStore } from "jotai";
+import { activeIdAtom, selectedSubcategoryIdsAtom } from "@/lib/store/site";
 import type { LayoutConfig, NavSite } from "@/types";
 import { recordVisit } from "@/hooks/use-recent-visits";
 import {
@@ -8,8 +10,12 @@ import {
 	openSiteWithPreference,
 	type SiteLinkMode,
 } from "@/lib/client/site-link";
-import { saveHomeSnapshot } from "@/lib/client/home-restore";
-import { buildSiteDetailPath } from "@/lib/site-detail";
+import {
+	getCurrentPageRouteKey,
+	saveHomeSnapshot,
+	savePageSnapshot,
+} from "@/lib/client/home-restore";
+import { buildSiteDetailPath, buildSiteDetailSlug } from "@/lib/site-detail";
 import type { SiteCardData, SiteCardNavigationModel } from "./site-card.types";
 
 export function useSiteCardNavigation({
@@ -23,6 +29,7 @@ export function useSiteCardNavigation({
 	layout?: Required<LayoutConfig>;
 	siteLinkMode: SiteLinkMode;
 }): SiteCardNavigationModel {
+	const store = useStore();
 	const detailHref = useMemo(() => buildSiteDetailPath(site), [site]);
 	const useDetailPage = layout?.enableSiteDetailPage === true;
 	const target =
@@ -104,19 +111,16 @@ export function useSiteCardNavigation({
 			if (event.button !== 0) return;
 			if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
-			const selected = document.querySelector<HTMLElement>(
-				"aside [role=option][data-selected=true]",
-			);
-			const fallbackFirst = document.querySelector<HTMLElement>(
-				"aside [role=option]",
-			);
-
-			saveHomeSnapshot({
+			const snapshot = {
 				scrollY: window.scrollY,
-				activeId: selected?.id || fallbackFirst?.id,
-			});
+				activeId: store.get(activeIdAtom),
+				selectedSubcategoryIds: store.get(selectedSubcategoryIdsAtom),
+				detailSlug: buildSiteDetailSlug(site),
+			};
+			saveHomeSnapshot(snapshot);
+			savePageSnapshot(getCurrentPageRouteKey(), snapshot);
 		},
-		[useDetailPage],
+		[site, store, useDetailPage],
 	);
 
 	return {

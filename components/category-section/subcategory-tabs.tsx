@@ -1,6 +1,8 @@
 "use client";
 
 import { Tabs } from "@heroui/react";
+import { useAtom } from "jotai";
+import { selectedSubcategoryIdAtomFamily } from "@/lib/store/site";
 import type { NavCategory } from "@/types";
 import type { CategorySectionModel } from "../layout.types";
 import { IconView } from "../icon-view";
@@ -14,10 +16,18 @@ export function SubcategoryTabs({
 	view: CategorySectionModel;
 }) {
 	const tabs = category.children ?? [];
+	const [selectedId, setSelectedId] = useAtom(
+		selectedSubcategoryIdAtomFamily(category.id),
+	);
+	const selectedKey = tabs.find((tab) => tab.id === selectedId)?.id ?? tabs[0]?.id;
 	if (tabs.length === 0) return null;
 
 	return (
-		<Tabs defaultSelectedKey={tabs[0].id} className="w-full min-w-0 gap-0">
+		<Tabs
+			selectedKey={selectedKey}
+			onSelectionChange={(key) => setSelectedId(String(key))}
+			className="w-full min-w-0 gap-0"
+		>
 			<Tabs.ListContainer className="mx-2 w-fit max-w-[calc(100%-1rem)] rounded-2xl bg-black/4 dark:bg-white/8">
 				<Tabs.List aria-label={`${category.name}的子分类`} className="gap-1">
 					{tabs.map((tab) => (
