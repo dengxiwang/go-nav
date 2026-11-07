@@ -1,8 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import type { PropsWithChildren } from "react";
+import { PageNavigationLinkActivity } from "@/components/page-navigation";
 import type { SiteCardNavigationModel } from "./site-card.types";
+
+function DetailNavigationProgress() {
+	const { pending } = useLinkStatus();
+	return pending ? <PageNavigationLinkActivity /> : null;
+}
 
 export function SiteCardLinkShell({
 	ariaLabel,
@@ -24,6 +30,7 @@ export function SiteCardLinkShell({
 				className={className}
 			>
 				{children}
+				<DetailNavigationProgress />
 			</Link>
 		);
 	}

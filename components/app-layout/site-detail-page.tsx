@@ -3,7 +3,7 @@
 import { Button, Chip } from "@heroui/react";
 import { useCallback } from "react";
 import { BiArrowBack, BiLinkExternal } from "react-icons/bi";
-import { useRouter } from "next/navigation";
+import { usePageNavigation } from "@/components/page-navigation";
 import type { LayoutConfig } from "@/types";
 import { recordVisit } from "@/hooks/use-recent-visits";
 import { openSiteWithPreference } from "@/lib/client/site-link";
@@ -24,7 +24,7 @@ export function SiteDetailPage({
 	entry: SiteDetailEntry;
 	layout: Required<LayoutConfig>;
 }) {
-	const router = useRouter();
+	const navigate = usePageNavigation();
 	const site = entry.site;
 	const tags = site.tags?.filter((tag) => tag.trim()) ?? [];
 	const previewImages = resolveSiteDetailPreviewImages(site);
@@ -33,8 +33,8 @@ export function SiteDetailPage({
 
 	const handleBack = useCallback(() => {
 		requestHomeRestore();
-		router.push("/", { scroll: false });
-	}, [router]);
+		navigate("/", { scroll: false });
+	}, [navigate]);
 
 	const handleVisit = useCallback(() => {
 		recordVisit(site);
