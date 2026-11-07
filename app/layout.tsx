@@ -4,6 +4,7 @@ import { getNav } from "@/lib/config";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppToastProvider } from "@/components/app-toast-provider";
 import { FocusRingGuard } from "@/components/focus-ring-guard";
+import { PageNavigationProvider } from "@/components/page-navigation";
 
 const isHtmlDeployment =
 	(process.env.BUILD_MODE || "server").toLowerCase() === "html";
@@ -90,7 +91,7 @@ export default function RootLayout({
 			<body className="min-h-full flex flex-col">
 								<ThemeProvider mode={themeMode}>
 										<FocusRingGuard />
-										{children}
+										<PageNavigationProvider>{children}</PageNavigationProvider>
 										<AppToastProvider />
 								</ThemeProvider>
 						</body>

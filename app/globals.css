@@ -40,6 +40,11 @@ body:where(.dark *) {
 	display: none !important;
 }
 
+/* 只调整 HeroUI 必填星号与标签的距离。 */
+.label::after {
+	margin-inline-start: 4px;
+}
+
 @keyframes slideDown {
 	from {
 		opacity: 0;

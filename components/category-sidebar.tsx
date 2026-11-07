@@ -18,7 +18,8 @@ import {
 	useState,
 	type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { usePageNavigation } from "@/components/page-navigation";
 import { useAtomValue } from "jotai";
 import type { NavCategory } from "@/types";
 import { useScrollContainment } from "@/hooks/use-scroll-containment";
@@ -75,7 +76,7 @@ export const CategorySidebar = memo(function CategorySidebar({
 	const showSubcategoryTabs = useAtomValue(showSubcategoryTabsAtom);
 	const showCategorySearch = useAtomValue(showCategorySearchAtom);
 	const pathname = usePathname();
-	const router = useRouter();
+	const navigate = usePageNavigation();
 	const [searchQuery, setSearchQuery] = useState("");
 	const [searchHighlightIndex, setSearchHighlightIndex] = useState(-1);
 	const [searchEntries, setSearchEntries] = useState<CategorySearchEntry[]>([]);
@@ -227,11 +228,11 @@ export const CategorySidebar = memo(function CategorySidebar({
 			if (inDetailPage) {
 				if (id === "home") {
 					onItemClick?.("");
-					router.push("/");
+					navigate("/");
 					return;
 				}
 				onItemClick?.(id);
-				router.push(`/#${encodeURIComponent(id)}`);
+				navigate(`/#${encodeURIComponent(id)}`);
 				return;
 			}
 
@@ -248,7 +249,7 @@ export const CategorySidebar = memo(function CategorySidebar({
 				}
 			}
 		},
-		[inDetailPage, onItemClick, router],
+		[inDetailPage, onItemClick, navigate],
 	);
 
 	const listRef = useRef<HTMLDivElement>(null);

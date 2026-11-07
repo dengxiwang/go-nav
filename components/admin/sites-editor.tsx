@@ -1824,6 +1824,7 @@ export function SitesEditor() {
 									<Select
 										className="w-full"
 										placeholder="选择分类"
+										isRequired
 										value={editingCategoryId}
 										onChange={(value) =>
 											setEditingCategoryId(value ? String(value) : null)
@@ -1853,6 +1854,7 @@ export function SitesEditor() {
 										</Select.Popover>
 									</Select>
 									<TextField
+										isRequired
 										value={editingSite?.url ?? ""}
 										onChange={(v) =>
 											setEditingSite({ ...editingSite!, url: v })
@@ -1923,6 +1925,7 @@ export function SitesEditor() {
 										“网站信息”更新名称、描述、标签和图标；“预览图”只抓取网站首屏截图。
 									</p>
 									<TextField
+										isRequired
 										value={editingSite?.title ?? ""}
 										onChange={(v) =>
 											setEditingSite({ ...editingSite!, title: v })

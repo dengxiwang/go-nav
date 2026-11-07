@@ -16,6 +16,7 @@ import {
     useOverlayState,
 } from "@heroui/react";
 import { useRouter } from "next/navigation";
+import { usePageNavigation } from "@/components/page-navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
@@ -516,6 +517,7 @@ export function AdminShell({ children }: { children?: React.ReactNode }) {
 function AdminShellContent({ children }: { children?: React.ReactNode }) {
 	const menuScrollRef = useScrollContainment<HTMLDivElement>();
 	const router = useRouter();
+	const navigatePage = usePageNavigation();
 	const { activePath, navigate } = useAdminNavigation();
 	const dirty = useAtomValue(dirtyAtom);
 	const [pendingLeave, setPendingLeave] = useState<"home" | "logout" | null>(null);
@@ -565,14 +567,18 @@ function AdminShellContent({ children }: { children?: React.ReactNode }) {
 				if (!res.ok) throw new Error(`退出失败 (${res.status})`);
 			}
 			setPendingLeave(null);
-			router.push(destination === "logout" ? "/admin/login" : "/");
 			// 在导航后刷新目标路由，重新读取登录态及已保存配置。
-			router.refresh();
+			if (destination === "home") {
+				navigatePage("/", { refresh: true });
+			} else {
+				router.push("/admin/login");
+				router.refresh();
+			}
 		} catch (err) {
 			setIsLeaving(false);
 			toast.danger("退出失败", { description: (err as Error).message });
 		}
-	}, [router]);
+	}, [navigatePage, router]);
 
 	const requestLeave = (destination: "home" | "logout") => {
 		if (dirty) {
@@ -738,6 +744,7 @@ function AdminShellContent({ children }: { children?: React.ReactNode }) {
 							variant="outline"
 							isIconOnly
 							className="h-8 w-8 shrink-0 sm:hidden"
+							aria-label="前台"
 							isDisabled={isLeaving}
 							onPress={() => requestLeave("home")}
 						>
@@ -782,7 +789,7 @@ function AdminShellContent({ children }: { children?: React.ReactNode }) {
 				</header>
 
 				{/* 内容区域 */}
-				<main className="w-full min-w-0 flex-1 p-3">
+				<main className="flex w-full min-w-0 flex-1 flex-col p-3">
 					{isHtmlDeployment ? (
 						<div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs leading-5 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
 							当前为纯静态配置后台。修改只保存在浏览器内存中；可导入之前导出的
@@ -790,7 +797,7 @@ function AdminShellContent({ children }: { children?: React.ReactNode }) {
 							website.json 覆盖到网站根目录，不支持任何上传 / 获取等 api 行为。
 						</div>
 					) : null}
-					<Card className="rounded-2xl border border-default bg-surface p-3 shadow-none">
+					<Card className="flex-1 rounded-2xl border border-default bg-surface p-3 shadow-none">
 						<AdminContent>{children}</AdminContent>
 					</Card>
 				</main>
